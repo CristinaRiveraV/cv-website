@@ -2,8 +2,9 @@ using System.Runtime.CompilerServices;
 
 public class Project
 {
-    public Project(string name, string description, List<Skill> skills, string? url = null, string? repoUrl = null, string? imageUrl = null, Education? education = null, Experience? experience = null, DateOnly? startDate = null, DateOnly? endDate = null)
+    public Project(Guid id, string name, string description, List<Skill> skills, string? url = null, string? repoUrl = null, string? imageUrl = null, Education? education = null, Experience? experience = null, DateOnly? startDate = null, DateOnly? endDate = null)
     {
+        Id = id;
         Name = name;
         Description = description;
         Skills = skills ?? new List<Skill>();
@@ -15,6 +16,7 @@ public class Project
         StartDate = startDate;
         EndDate = endDate;
     }
+    public Guid Id { get; }
     public string Name { get; }
     public string Description { get; }
     public List<Skill> Skills { get; }

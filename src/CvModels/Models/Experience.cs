@@ -1,7 +1,8 @@
 public class Experience
 {
-    public Experience(string role, string company, string location, string summary, DateOnly startDate, DateOnly? endDate, WorkMode mode, List<Skill> skills, List<Responsibility> responsibilities)
+    public Experience(Guid id, string role, string company, string location, string summary, DateOnly startDate, DateOnly? endDate, WorkMode mode, List<Skill> skills, List<Responsibility> responsibilities)
     {
+        Id = id;
         Role = role;
         Company = company;
         Location = location;
@@ -12,6 +13,7 @@ public class Experience
         Skills = skills ?? new List<Skill>();
         Responsibilities = responsibilities ?? new List<Responsibility>();
     }
+    public Guid Id { get; }
     public string Role{ get; }
     public string Company { get; }
     public string Location { get; }

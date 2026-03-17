@@ -1,3 +1,4 @@
+using CvApi.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -35,6 +36,8 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+builder.Services.AddSingleton(person);
+builder.Services.AddSingleton<CvService>();
 
 var app = builder.Build();
 
@@ -47,14 +50,37 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors();
 
-app.MapGet("/cv", () => person);
-app.MapGet("/cv/identity", () => person.Identity);
-app.MapGet("/cv/contact", () => person.ContactInformation);
-app.MapGet("/cv/experiences", () => person.Experiences);
-app.MapGet("/cv/education", () => person.Education);
-app.MapGet("/cv/projects", () => person.Projects);
-app.MapGet("/cv/skills", () => person.AllSkills);
-app.MapGet("/cv/languages", () => person.Languages);
+var cvGroup = app.MapGroup("/cv");
+
+cvGroup.MapGet("", (CvService cv) => cv.GetPerson());
+cvGroup.MapGet("/identity", (CvService cv) => cv.GetIdentity());
+cvGroup.MapGet("/contact", (CvService cv) => cv.GetContactInformation());
+cvGroup.MapGet("/experiences", (CvService cv) => cv.GetExperiences());
+cvGroup.MapGet("/experiences/{id}", (Guid id, CvService cv) => 
+{
+    var experience = cv.GetExperience(id);
+    return experience is not null
+        ? Results.Ok(experience)
+        : Results.NotFound(new { error = "Experience not found" });
+});
+cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation());
+cvGroup.MapGet("/education/{id}", (Guid id, CvService cv) =>
+{
+    var education = cv.GetEducation(id);
+    return education is not null
+        ? Results.Ok(education)
+        : Results.NotFound(new { error = "Education not found" });
+});
+cvGroup.MapGet("/projects", (CvService cv) => cv.GetProjects());
+cvGroup.MapGet("/projects/{id}", (Guid id, CvService cv) =>
+{
+    var projects = cv.GetProject(id);
+    return projects is not null
+        ? Results.Ok(projects)
+        : Results.NotFound(new { error = "Projects not found" });
+});
+cvGroup.MapGet("/skills", (CvService cv) => cv.GetSkills());
+cvGroup.MapGet("/languages", (CvService cv) => cv.GetLanguages());
 app.MapGet("/", () => new
 {
     message = "CV API",
