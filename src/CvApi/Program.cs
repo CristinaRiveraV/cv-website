@@ -1,6 +1,8 @@
 using CvApi.Services;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Scalar.AspNetCore;
+using CvApi.Endpoints;
 
 var options = new JsonSerializerOptions
 {
@@ -45,56 +47,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
 app.UseCors();
 
-var cvGroup = app.MapGroup("/cv");
+var cvGroup = app.MapGroup("/cv")
+    .WithTags("CV");
 
-cvGroup.MapGet("", (CvService cv) => cv.GetPerson());
-cvGroup.MapGet("/identity", (CvService cv) => cv.GetIdentity());
-cvGroup.MapGet("/contact", (CvService cv) => cv.GetContactInformation());
-cvGroup.MapGet("/experiences", (CvService cv) => cv.GetExperiences());
-cvGroup.MapGet("/experiences/{id}", (Guid id, CvService cv) => 
-{
-    var experience = cv.GetExperience(id);
-    return experience is not null
-        ? Results.Ok(experience)
-        : Results.NotFound(new { error = "Experience not found" });
-});
-cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation());
-cvGroup.MapGet("/education/{id}", (Guid id, CvService cv) =>
-{
-    var education = cv.GetEducation(id);
-    return education is not null
-        ? Results.Ok(education)
-        : Results.NotFound(new { error = "Education not found" });
-});
-cvGroup.MapGet("/projects", (CvService cv) => cv.GetProjects());
-cvGroup.MapGet("/projects/{id}", (Guid id, CvService cv) =>
-{
-    var projects = cv.GetProject(id);
-    return projects is not null
-        ? Results.Ok(projects)
-        : Results.NotFound(new { error = "Projects not found" });
-});
-cvGroup.MapGet("/skills", (CvService cv) => cv.GetSkills());
-cvGroup.MapGet("/languages", (CvService cv) => cv.GetLanguages());
-app.MapGet("/", () => new
-{
-    message = "CV API",
-    endpoints = new
-    {
-        cv = "/cv",
-        identity = "/cv/identity",
-        contact = "/cv/contact",
-        experiences = "/cv/experiences",
-        education = "/cv/education",
-        projects = "/cv/projects",
-        skills = "/cv/skills",
-        languages = "/cv/languages"
-    }
-});
+cvGroup.MapCvEndpoints();
 
 app.Run();

@@ -2,7 +2,7 @@
 topic: ASP.NET Minimal API
 slug: aspnet-minimal-api
 status: notes
-sessions: [2026-03-17]
+sessions: [2026-03-17, 2026-03-18]
 ---
 
 ## 2026-03-17
@@ -34,3 +34,70 @@ ASP.NET processes middleware in the order you add it. CORS must come before endp
 4. `app.Run();`
 
 If you put `UseCors()` after the endpoints, CORS headers won't be added to responses and the browser will still block cross-origin requests.
+
+### Enum serialization — numbers vs strings [`decision`]
+
+ASP.NET serializes enums as numbers by default (e.g. `"mode": 2`). Added `JsonStringEnumConverter` to `ConfigureHttpJsonOptions` so the API returns human-readable strings (`"mode": "Remote"`). Self-documenting API responses are better for consumers.
+
+### Route grouping with MapGroup [`pattern`]
+
+Instead of repeating `/cv` in every endpoint, `app.MapGroup("/cv")` creates a group with a shared prefix. All endpoints inside automatically get `/cv` prepended. Cleaner code, same behaviour.
+
+```csharp
+var cvGroup = app.MapGroup("/cv");
+cvGroup.MapGet("/identity", ...);  // becomes GET /cv/identity
+```
+
+### Root endpoint as API index [`tip`]
+
+Added a `GET /` endpoint that returns a JSON object listing all available endpoints. Inspired by HATEOAS (REST principle where APIs describe their own navigation). Used an anonymous object (`new { ... }`) — a quick throwaway object without defining a class.
+
+### Choosing IDs over indexes for route parameters [`decision`]
+
+For endpoints like `/cv/experiences/{id}`, we chose Guid IDs over array indexes. Indexes are fragile (reordering changes what `/experiences/0` returns) and meaningless. GUIDs are stable and unique. Added `Guid Id` to Experience, Education, and Project models. MongoDB will generate IDs automatically later.
+
+### Dependency Injection (DI) [`concept`]
+
+Instead of endpoints directly accessing a local `person` variable, created a `CvService` class registered as a singleton. Endpoints declare `CvService cv` as a parameter and ASP.NET provides it automatically. Benefits: separation of concerns (service handles data, endpoints handle HTTP), easier to swap implementations later (e.g. JSON file → MongoDB), and testable.
+
+```csharp
+// Register
+builder.Services.AddSingleton<CvService>();
+
+// Inject — ASP.NET passes it automatically
+cvGroup.MapGet("/identity", (CvService cv) => cv.GetIdentity());
+```
+
+### Results.Ok and Results.NotFound for proper status codes [`pattern`]
+
+When an endpoint can return different HTTP status codes (200 or 404), use `Results.Ok()` and `Results.NotFound()` instead of returning the object directly. The return type becomes `IResult` which can represent any HTTP response.
+
+[Screenshot: aspnet-api-base-endpoint.png]
+[Screenshot: aspnet-api-first-cv-endpoint.png]
+
+## 2026-03-18
+
+### Scalar — modern OpenAPI UI [`concept`]
+
+ASP.NET already had OpenAPI document generation built in (`AddOpenApi()` + `MapOpenApi()` from the template), which serves the raw JSON spec at `/openapi/v1.json`. But to get an interactive UI, you need a separate package. Scalar is Microsoft's modern recommendation (replacing Swagger UI for .NET 9+). Installed `Scalar.AspNetCore`, added `using Scalar.AspNetCore` and `app.MapScalarApiReference()` next to `MapOpenApi()`. UI available at `/scalar/v1`.
+
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();           // serves the JSON spec
+    app.MapScalarApiReference(); // serves the interactive UI
+}
+```
+
+### Response type annotations for OpenAPI [`pattern`]
+
+Without annotations, the OpenAPI spec doesn't know what types your endpoints return — Scalar shows vague responses. Adding `.Produces<T>()` tells OpenAPI the exact return type so the UI shows full schemas. For endpoints that can return 404, chain both `.Produces<T>()` and `.Produces(StatusCodes.Status404NotFound)`. `.WithSummary("...")` adds a human-readable description, and `.WithTags("CV")` on the route group groups all endpoints together in the UI.
+
+```csharp
+var cvGroup = app.MapGroup("/cv").WithTags("CV");
+
+cvGroup.MapGet("/experiences/{id}", (Guid id, CvService cv) => { ... })
+    .Produces<Experience>()
+    .Produces(StatusCodes.Status404NotFound)
+    .WithSummary("Get a specific work experience by ID");
+```
