@@ -6,7 +6,7 @@ var options = new JsonSerializerOptions
       Converters = { new JsonStringEnumConverter() }
   };
 
-var json = File.ReadAllText( Path.Combine(AppContext.BaseDirectory, "appsettings.Development.template.json") );
+var json = File.ReadAllText(Path.Combine("..", "..", "appsettings.Development.template.json"));
 var personWrapper = JsonSerializer.Deserialize<PersonWrapper>(json, options);
 var person = personWrapper?.Person;
 

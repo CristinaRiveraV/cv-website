@@ -1,7 +1,8 @@
 public class Education
 {
-    public Education(string name, string institution, string location, int? startYear, int endYear, string description, List<Course> courses)
+    public Education(Guid id, string name, string institution, string location, int? startYear, int endYear, string description, List<Course> courses)
     {
+        Id = id;
         Name = name;
         Institution = institution;
         Location = location;
@@ -10,6 +11,7 @@ public class Education
         Description = description;
         Courses = courses ?? new List<Course>();
     }
+    public Guid Id { get; }
     public string Name { get; }
     public string Institution { get; }
     public string Location { get; }

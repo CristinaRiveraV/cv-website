@@ -122,6 +122,23 @@ During training sessions, you should **proactively suggest** capturing a note wh
 
 Suggest with something like: *"That's a good one for the blog — want me to capture a note about [topic]?"*
 
+### Screenshot Prompts
+
+During training sessions, you should **proactively prompt the user to take a screenshot** at visual milestones — moments that would make the blog post more engaging with an image. Prompt with something like: *"This would be a good screenshot for the blog — want to grab one?"*
+
+Suggest screenshots when:
+
+- **An endpoint returns data in the browser** (e.g. first JSON response from the API)
+- **A UI component renders for the first time** (e.g. React app showing CV data)
+- **A tool shows useful output** (e.g. Swagger UI, OpenAPI spec, database viewer)
+- **An error is visible that leads to a learning moment** (e.g. a stack trace before a fix)
+- **Before/after comparisons** (e.g. raw JSON vs formatted UI)
+- **Terminal output that shows something working** (e.g. first successful `dotnet run`, test results)
+
+When prompting for a screenshot, always include a suggested filename following the convention `<topic-slug>-<short-description>.png`, saved to `docs/blog/screenshots/`. For example: *"Want to grab a screenshot? Save it as `aspnet-minimal-api-first-endpoint.png`"*
+
+When the user takes a screenshot, note it in the blog notes file with a placeholder like `[Screenshot: aspnet-minimal-api-first-endpoint.png]` so the draft knows where to place it.
+
 ### Topic Naming Convention
 
 Use kebab-case slugs that describe the topic, not the session:
