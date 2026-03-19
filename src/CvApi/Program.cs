@@ -1,8 +1,8 @@
+using CvApi.Endpoints;
 using CvApi.Services;
+using Scalar.AspNetCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Scalar.AspNetCore;
-using CvApi.Endpoints;
 
 var options = new JsonSerializerOptions
 {
@@ -42,6 +42,19 @@ builder.Services.AddSingleton(person);
 builder.Services.AddSingleton<CvService>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler(appError =>
+{
+    appError.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "An unexpected error occurred. Please try again later."
+        });
+    });
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

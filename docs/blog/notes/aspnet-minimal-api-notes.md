@@ -2,7 +2,7 @@
 topic: ASP.NET Minimal API
 slug: aspnet-minimal-api
 status: notes
-sessions: [2026-03-17, 2026-03-18]
+sessions: [2026-03-17, 2026-03-18, 2026-03-19]
 ---
 
 ## 2026-03-17
@@ -100,4 +100,40 @@ cvGroup.MapGet("/experiences/{id}", (Guid id, CvService cv) => { ... })
     .Produces<Experience>()
     .Produces(StatusCodes.Status404NotFound)
     .WithSummary("Get a specific work experience by ID");
+```
+
+## 2026-03-19
+
+### Expression lambdas vs block lambdas [`tip`]
+
+C# expression lambdas (`() => expr`) can only contain a single expression, not statements. `throw` is a statement, so `() => throw new Exception()` won't compile — the compiler sees a delegate that takes 0 arguments and complains. Use a block lambda with curly braces instead: `() => { throw new Exception(); }`. Same applies to other statements like `if`, `for`, variable declarations, etc.
+
+```csharp
+// Won't compile — throw is a statement, not an expression
+app.MapGet("/test", () => throw new Exception("boom"));
+
+// Works — block lambda allows statements
+app.MapGet("/test", () => { throw new Exception("boom"); });
+```
+
+### Custom middleware vs UseExceptionHandler [`decision`]
+
+Built a custom `ErrorHandlingMiddleware` class to learn how middleware works — a class with a `RequestDelegate _next` constructor param and an `InvokeAsync(HttpContext context)` method that wraps `await _next(context)` in a try/catch. This teaches the middleware pattern used for all cross-cutting concerns (logging, auth, timing, etc.).
+
+Then swapped it for ASP.NET's built-in `app.UseExceptionHandler()`, which does the same thing but is battle-tested and handles edge cases like `Response.HasStarted` automatically. For real projects, prefer the built-in — you get the same result with less code to maintain. The custom approach is valuable for learning, not for production.
+
+```csharp
+// Built-in — preferred for real projects
+app.UseExceptionHandler(appError =>
+{
+    appError.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "An unexpected error occurred. Please try again later."
+        });
+    });
+});
 ```
