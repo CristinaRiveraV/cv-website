@@ -1,10 +1,5 @@
-public class Course
+public class Course()
 {
-    public Course(string name, string description)
-    {
-        Name = name;
-        Description = description;
-    }
-    public string Name { get; }
-    public string Description { get; }
+    public string Name { get; set; }
+    public string Description { get; set; }
 }

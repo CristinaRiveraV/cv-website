@@ -1,10 +1,5 @@
 public class Language
 {
-    public Language(string name, LanguageProficiency proficiency)
-    {
-        Name = name;
-        Proficiency = proficiency;
-    }
-    public string Name { get; }
-    public LanguageProficiency Proficiency { get; }
+    public string Name { get; set; }
+    public LanguageProficiency Proficiency { get; set; }
 }

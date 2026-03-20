@@ -1,29 +1,22 @@
 using CvApi.Endpoints;
+using CvApi.Repositories;
 using CvApi.Services;
+using CvApi.Settings;
 using Scalar.AspNetCore;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-
-var options = new JsonSerializerOptions
-{
-    Converters = { new JsonStringEnumConverter() }
-};
-
-var json = File.ReadAllText(Path.Combine("..", "..", "appsettings.Development.template.json"));
-var personWrapper = JsonSerializer.Deserialize<PersonWrapper>(json, options);
-var person = personWrapper?.Person;
-
-if (person?.Identity == null || person?.ContactInformation == null)
-{
-    Console.WriteLine("Error: Could not load required config sections.");
-    return;
-}
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi(); 
+// Read MongoDB settings from appsettings
+var mongoSettings = builder.Configuration.GetSection("MongoDB").Get<MongoDbSettings>();
+if (mongoSettings == null)
+{
+    Console.WriteLine("Error: MongoDB settings not found in configuration.");
+    return;
+}
+
+// Register services
+builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -38,10 +31,16 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
-builder.Services.AddSingleton(person);
+
+builder.Services.AddSingleton(mongoSettings);
+builder.Services.AddSingleton<CvRepository>();
 builder.Services.AddSingleton<CvService>();
 
 var app = builder.Build();
+
+// Seed database with example data (temporary)
+var repository = app.Services.GetRequiredService<CvRepository>();
+repository.SeedFromJson(Path.Combine("..", "..", "appsettings.Development.template.json"));
 
 app.UseExceptionHandler(appError =>
 {
@@ -56,7 +55,6 @@ app.UseExceptionHandler(appError =>
     });
 });
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

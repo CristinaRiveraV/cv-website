@@ -1,5 +1,8 @@
+using MongoDB.Bson.Serialization.Attributes;
+
 public class Skill
 {
+    [BsonConstructor]
     public Skill(string name, SkillCategory category, int proficiency)
     {
         if(!IsValidProficiency(proficiency))        

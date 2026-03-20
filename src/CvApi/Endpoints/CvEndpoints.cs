@@ -5,7 +5,7 @@ public static class CvEndpoints
 {
     public static RouteGroupBuilder MapCvEndpoints(this RouteGroupBuilder cvGroup)
     {
-        cvGroup.MapGet("", (CvService cv) => cv.GetPerson())
+        cvGroup.MapGet("", (CvService cv) => cv.GetFullCv())
             .Produces<Person>()
             .WithSummary("Get the full CV");
 
@@ -21,7 +21,7 @@ public static class CvEndpoints
             .Produces<List<Experience>>()
             .WithSummary("Get a list of all experiences");
 
-        cvGroup.MapGet("/experiences/{id}", (Guid id, CvService cv) =>
+        cvGroup.MapGet("/experiences/{id}", (string id, CvService cv) =>
             {
                 var experience = cv.GetExperience(id);
                 return experience is not null
@@ -36,7 +36,7 @@ public static class CvEndpoints
             .Produces<List<Education>>()
             .WithSummary("Get a list of all education history");
 
-        cvGroup.MapGet("/education/{id}", (Guid id, CvService cv) =>
+        cvGroup.MapGet("/education/{id}", (string id, CvService cv) =>
             {
                 var education = cv.GetEducation(id);
                 return education is not null
@@ -51,7 +51,7 @@ public static class CvEndpoints
             .Produces<List<Project>>()
             .WithSummary("Get a list of all projects");
 
-        cvGroup.MapGet("/projects/{id}", (Guid id, CvService cv) =>
+        cvGroup.MapGet("/projects/{id}", (string id, CvService cv) =>
             {
                 var projects = cv.GetProject(id);
                 return projects is not null
