@@ -1,12 +1,6 @@
 public class Identity
 {
-    public Identity(string name, string jobTitle, string personalSummary)
-    {
-        Name = name;
-        JobTitle = jobTitle;
-        PersonalSummary = personalSummary;
-    }
-    public string Name { get; }
-    public string JobTitle { get; }
-    public string PersonalSummary { get; }
+    public string Name { get; set; }
+    public string JobTitle { get; set; }
+    public string PersonalSummary { get; set; }
 }

@@ -1,5 +1,6 @@
 public class Skill
 {
+    public Skill() { }
     public Skill(string name, SkillCategory category, int proficiency)
     {
         if(!IsValidProficiency(proficiency))        
@@ -9,9 +10,9 @@ public class Skill
         Category = category;
         Proficiency = proficiency;
     }
-    public string Name { get; }
-    public SkillCategory Category { get; }
-    public int Proficiency { get; private set;}
+    public string Name { get; set; }
+    public SkillCategory Category { get; set; }
+    public int Proficiency { get; set;}
 
     public void UpdateProficiency(int newProficiency)
     {
@@ -33,7 +34,7 @@ public class Skill
     }
 
     public override int GetHashCode()
-  {
-      return HashCode.Combine(Name, Category);
-  }
+    { 
+        return HashCode.Combine(Name, Category);
+    }
 }
