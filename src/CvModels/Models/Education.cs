@@ -1,4 +1,4 @@
-public class Education()
+public class Education
 {
     public string Id { get; set; }
     public string Name { get; set; }

@@ -1,4 +1,4 @@
-public class Identity()
+public class Identity
 {
     public string Name { get; set; }
     public string JobTitle { get; set; }

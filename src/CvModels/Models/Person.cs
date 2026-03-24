@@ -1,6 +1,6 @@
 using MongoDB.Bson.Serialization.Attributes;
 
-public class Person()
+public class Person
 {
     [BsonId]
     [BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
