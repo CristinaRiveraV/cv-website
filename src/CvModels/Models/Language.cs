@@ -1,5 +1,5 @@
 public class Language
 {
-    public string Name { get; set; }
-    public LanguageProficiency Proficiency { get; set; }
+    public required string Name { get; set; }
+    public required LanguageProficiency Proficiency { get; set; }
 }

@@ -1,6 +1,6 @@
 public class Responsibility
 {
-    public string Description { get; set; }
-    public string Category { get; set; }
-    public bool IsAchievement { get; set; }
+    public required string Description { get; set; }
+    public required string Category { get; set; }
+    public required bool IsAchievement { get; set; }
 }
