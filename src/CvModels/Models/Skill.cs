@@ -10,9 +10,9 @@ public class Skill
         Category = category;
         Proficiency = proficiency;
     }
-    public string Name { get; set; }
-    public SkillCategory Category { get; set; }
-    public int Proficiency { get; set;}
+    public required string Name { get; set; }
+    public required SkillCategory Category { get; set; }
+    public required int Proficiency { get; set;}
 
     public void UpdateProficiency(int newProficiency)
     {

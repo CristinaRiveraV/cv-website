@@ -1,6 +1,6 @@
 public class Identity
 {
-    public string Name { get; set; }
-    public string JobTitle { get; set; }
-    public string PersonalSummary { get; set; }
+    public required string Name { get; set; }
+    public required string JobTitle { get; set; }
+    public required string PersonalSummary { get; set; }
 }

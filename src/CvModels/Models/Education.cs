@@ -1,11 +1,11 @@
 public class Education
 {
-    public string Id { get; set; }
-    public string Name { get; set; }
-    public string Institution { get; set; }
-    public string Location { get; set; }
+    public required string Id { get; set; }
+    public required string Name { get; set; }
+    public required string Institution { get; set; }
+    public required string Location { get; set; }
     public int? StartYear { get; set; }
-    public int EndYear { get; set; }
-    public string Description { get; set; }
-    public List<Course> Courses { get; set; }
+    public required int EndYear { get; set; }
+    public required string Description { get; set; }
+    public List<Course>? Courses { get; set; }
 }

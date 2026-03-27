@@ -38,10 +38,6 @@ builder.Services.AddSingleton<CvService>();
 
 var app = builder.Build();
 
-// Seed database with example data (temporary)
-var repository = app.Services.GetRequiredService<CvRepository>();
-repository.SeedFromJson(Path.Combine("..", "..", "appsettings.Development.template.json"));
-
 app.UseExceptionHandler(appError =>
 {
     appError.Run(async context =>

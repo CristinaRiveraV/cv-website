@@ -1,13 +1,13 @@
 public class Experience
 {
-    public string Id { get; set; }
-    public string Role{ get; set; }
-    public string Company { get; set; }
-    public string Location { get; set; }
-    public string Summary { get; set; }
-    public DateOnly StartDate { get; set; }
+    public required string Id { get; set; }
+    public required string Role{ get; set; }
+    public required string Company { get; set; }
+    public required string Location { get; set; }
+    public required string Summary { get; set; }
+    public required DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
-    public WorkMode Mode { get; set; }
-    public List<Skill> Skills { get; set; }
-    public List<Responsibility> Responsibilities { get; set; }
+    public required WorkMode Mode { get; set; }
+    public required List<Skill> Skills { get; set; }
+    public required List<Responsibility> Responsibilities { get; set; }
 }
