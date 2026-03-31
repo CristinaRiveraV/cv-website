@@ -36,6 +36,14 @@ builder.Services.AddSingleton(mongoSettings);
 builder.Services.AddSingleton<CvRepository>();
 builder.Services.AddSingleton<CvService>();
 
+builder.Services.AddAuthentication()
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://criveravaldez.uk.auth0.com/";
+        options.Audience = "https://cv-api";
+    });
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 app.UseExceptionHandler(appError =>
@@ -59,9 +67,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 var cvGroup = app.MapGroup("/cv")
-    .WithTags("CV");
+    .WithTags("CV")
+    .RequireAuthorization();
 
 cvGroup.MapCvEndpoints();
 
