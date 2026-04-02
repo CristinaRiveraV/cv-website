@@ -1,0 +1,9 @@
+.git
+  .github
+  .claude
+  docs
+  node_modules
+  *.md
+  appsettings.Development.json
+  bin
+  obj
