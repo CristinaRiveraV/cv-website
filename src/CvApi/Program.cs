@@ -71,8 +71,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 var cvGroup = app.MapGroup("/cv")
-    .WithTags("CV")
-    .RequireAuthorization();
+    .WithTags("CV");
 
 cvGroup.MapCvEndpoints();
 
