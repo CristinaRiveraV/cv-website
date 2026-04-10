@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import {
+  Typography, Card, CardContent, Chip, Box,
+  List, ListItem, ListItemText, CircularProgress, Alert
+} from '@mui/material'
 import type { Person } from '../types/cv'
 
 function Cv() {
@@ -15,68 +19,84 @@ function Cv() {
       .catch(err => setError(err.message))
   }, [])
 
-  if (error) return <p>Error: {error}</p>
-  if (!cv) return <p>Loading...</p>
+  if (error) return <Alert severity="error">{error}</Alert>
+  if (!cv) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
 
   return (
-    <div>
-      <header>
-        <h1>{cv.identity.name}</h1>
-        <p className="job-title">{cv.identity.jobTitle}</p>
-        <p>{cv.identity.personalSummary}</p>
-      </header>
+    <Box>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h3" component="h1">{cv.identity.name}</Typography>
+        <Typography variant="h6" color="primary" sx={{ mt: 0.5, mb: 2 }}>
+          {cv.identity.jobTitle}
+        </Typography>
+        <Typography>{cv.identity.personalSummary}</Typography>
+      </Box>
 
-      <section>
-        <h2>Experience</h2>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
+          Experience
+        </Typography>
         {cv.experiences.map(exp => (
-          <div key={exp.id} className="card">
-            <h3>{exp.role}</h3>
-            <p className="subtitle">
-              {exp.company} — {exp.location} ({exp.mode})
-            </p>
-            <p>{exp.summary}</p>
-            <ul>
-              {exp.responsibilities.map((r, i) => (
-                <li key={i}>{r.description}</li>
-              ))}
-            </ul>
-          </div>
+          <Card key={exp.id} sx={{ mb: 2 }} variant="outlined">
+            <CardContent>
+              <Typography variant="h6">{exp.role}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {exp.company} — {exp.location} ({exp.mode})
+              </Typography>
+              <Typography sx={{ mb: 1 }}>{exp.summary}</Typography>
+              <List dense disablePadding>
+                {exp.responsibilities.map((r, i) => (
+                  <ListItem key={i} sx={{ pl: 2 }}>
+                    <ListItemText primary={r.description} />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
         ))}
-      </section>
+      </Box>
 
-      <section>
-        <h2>Education</h2>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
+          Education
+        </Typography>
         {cv.education.map(edu => (
-          <div key={edu.id} className="card">
-            <h3>{edu.name}</h3>
-            <p className="subtitle">
-              {edu.institution} — {edu.location} ({edu.endYear})
-            </p>
-            <p>{edu.description}</p>
-          </div>
+          <Card key={edu.id} sx={{ mb: 2 }} variant="outlined">
+            <CardContent>
+              <Typography variant="h6">{edu.name}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {edu.institution} — {edu.location} ({edu.endYear})
+              </Typography>
+              <Typography>{edu.description}</Typography>
+            </CardContent>
+          </Card>
         ))}
-      </section>
+      </Box>
 
-      <section>
-        <h2>Skills</h2>
-        <div className="skills-list">
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
+          Skills
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {cv.allSkills.map((skill, i) => (
-            <span key={i} className="skill-tag">
-              {skill.name}
-            </span>
+            <Chip key={i} label={skill.name} color="primary" />
           ))}
-        </div>
-      </section>
+        </Box>
+      </Box>
 
-      <section>
-        <h2>Languages</h2>
-        <ul>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
+          Languages
+        </Typography>
+        <List dense>
           {cv.languages.map((lang, i) => (
-            <li key={i}>{lang.name} — {lang.proficiency}</li>
+            <ListItem key={i}>
+              <ListItemText primary={lang.name} secondary={lang.proficiency} />
+            </ListItem>
           ))}
-        </ul>
-      </section>
-    </div>
+        </List>
+      </Box>
+    </Box>
   )
 }
 

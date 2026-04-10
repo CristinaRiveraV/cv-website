@@ -4,6 +4,14 @@ export interface Identity {
     personalSummary: string;
 }
 
+export interface ContactInformation {
+    email: string;
+    phone: string | null;
+    linkedIn: string;
+    gitHub: string;
+    portfolio: string | null;
+}
+
 export interface Experience {
     id: string;
     role: string;
