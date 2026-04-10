@@ -2,7 +2,7 @@
 topic: "React Frontend Setup"
 slug: react-frontend
 status: notes
-sessions: [2026-04-08, 2026-04-09]
+sessions: [2026-04-08, 2026-04-09, 2026-04-10]
 ---
 
 ## 2026-04-08
@@ -81,3 +81,55 @@ Removed `.RequireAuthorization()` from the CV endpoint group so the frontend can
 ### MUI (Material UI) chosen for styling [`decision`]
 
 Installed MUI (`@mui/material`, `@emotion/react`, `@emotion/styled`). Decision to build structure first with plain HTML/CSS, then swap in MUI was validated — the hand-written CSS served its purpose for learning but will be replaced by MUI components (`Card`, `Typography`, `Chip`, `AppBar`, etc.) next session.
+
+## 2026-04-10
+
+### MUI replaces custom CSS with pre-built components [`concept`]
+
+Swapped all hand-written CSS for MUI components. The key mapping: `<nav>` became `<AppBar>` + `<Toolbar>`, `<div className="card">` became `<Card>` + `<CardContent>`, `<span className="skill-tag">` became `<Chip>`, headings/paragraphs became `<Typography>`, and loading/error states became `<CircularProgress>` and `<Alert>`. Deleted `App.css` and `index.css` entirely — MUI handles everything.
+
+### The sx prop is CSS-in-JS with theme awareness [`concept`]
+
+MUI's `sx` prop replaces className-based styling. Spacing values are multiples of 8px (so `padding: 2` = 16px). Theme-aware shortcuts like `color: 'primary.main'` and `color: 'text.secondary'` pull from MUI's palette. Layout shorthands: `mx` = margin horizontal, `py` = padding vertical, `mb` = margin bottom.
+
+```tsx
+<Box sx={{ maxWidth: 900, mx: 'auto', py: 4, px: 3 }}>
+```
+
+### Typography: variant vs component prop [`concept`]
+
+`variant` controls the visual style (size, weight), `component` controls the HTML tag. `<Typography variant="h3" component="h1">` looks like an h3 but renders as `<h1>` in the DOM. This separates visual design from semantic HTML — important for accessibility. `gutterBottom` is a boolean shorthand that adds bottom margin without needing `sx`.
+
+### MUI's component prop enables hybrid components [`concept`]
+
+MUI components accept a `component` prop that changes the underlying HTML element. `<Button component={NavLink} to="/cv">` renders an MUI-styled button that behaves as a React Router link — routing and styling in one element. Same pattern used with `<Button component={Link}>` on the Home page.
+
+### flexGrow for nav bar layout [`concept`]
+
+Used `flexGrow: 1` on the name in the `Toolbar` to push navigation buttons to the right. `Toolbar` is a flex container by default, so the name with `flexGrow: 1` expands to fill all available space, and the button group sits on the far right. A common Material Design pattern.
+
+### @mui/icons-material is a separate package [`tip`]
+
+MUI icons (`EmailIcon`, `LinkedInIcon`, `GitHubIcon`, `PhoneIcon`) come from `@mui/icons-material`, not the core `@mui/material` package. Each icon is its own component import. Used `<ListItemIcon>` to place icons alongside text in the contact list.
+
+### CORS middleware order matters [`mistake`]
+
+The React app (port 5173) couldn't reach the API (port 5123) despite CORS being configured. The problem: `UseHttpsRedirection()` was before `UseCors()` in the middleware pipeline. The redirect response went out *without* CORS headers, and the browser blocked it. Fix: move `UseCors()` before `UseHttpsRedirection()`. Lesson: ASP.NET middleware order is critical — each middleware only processes requests that reach it.
+
+```csharp
+// Before (broken): redirect fires before CORS headers are added
+app.UseHttpsRedirection();
+app.UseCors();
+
+// After (fixed): CORS headers added to all responses, including redirects
+app.UseCors();
+app.UseHttpsRedirection();
+```
+
+### MongoDB Atlas IP whitelist expires between sessions [`tip`]
+
+Got a `System.TimeoutException` with `State: "Disconnected", Servers: []` when the API tried to query MongoDB. The cluster was fine — the local IP had changed since the last session. Fix: update Network Access in MongoDB Atlas. For a training project, `0.0.0.0/0` (allow all) avoids this recurring issue.
+
+### git restore recovers deleted files [`tip`]
+
+Accidentally deleted `App.tsx` instead of `App.css`. Recovered it with `git restore src/cv-frontend/src/App.tsx`, which restores the last committed version. Since the MUI changes hadn't been committed yet, the file came back as the old version and needed re-applying. Lesson: commit often — each commit is a save point.
