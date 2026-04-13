@@ -10,7 +10,7 @@ function Cv() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5123/cv')
+    fetch(`${import.meta.env.VITE_API_URL}/cv`)
       .then(response => {
         if (!response.ok) throw new Error(`API error: ${response.status}`)
         return response.json()
