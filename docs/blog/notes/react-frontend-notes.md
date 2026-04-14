@@ -133,3 +133,29 @@ Got a `System.TimeoutException` with `State: "Disconnected", Servers: []` when t
 ### git restore recovers deleted files [`tip`]
 
 Accidentally deleted `App.tsx` instead of `App.css`. Recovered it with `git restore src/cv-frontend/src/App.tsx`, which restores the last committed version. Since the MUI changes hadn't been committed yet, the file came back as the old version and needed re-applying. Lesson: commit often — each commit is a save point.
+
+## 2026-04-13
+
+### Vite environment variables use the VITE_ prefix [`concept`]
+
+Vite controls what gets included in the browser bundle. Only variables prefixed with `VITE_` are exposed to client code via `import.meta.env.VITE_VARIABLE_NAME`. This is a security feature — it prevents accidentally leaking server-side secrets (like database passwords) to the browser. Accessed using `import.meta.env` instead of Node's `process.env`.
+
+### Multiple .env files for different environments [`concept`]
+
+Vite auto-selects `.env` files based on the mode: `.env.development` loads during `npm run dev`, `.env.production` loads during `npm run build`. This means the app automatically points to `localhost` in development and the Render URL in production — no manual switching. There's also `.env.local` (always loaded, git-ignored) for personal overrides.
+
+### Template literals for string interpolation [`concept`]
+
+Replaced single-quoted strings with backtick template literals to embed the env variable: `` `${import.meta.env.VITE_API_URL}/cv` ``. Template literals (`` `...` ``) allow `${expression}` inside strings — similar to C#'s `$"Hello {name}"` string interpolation. Single quotes (`'...'`) don't support this.
+
+### .env.example as documentation [`decision`]
+
+Created `.env.example` with the expected variable names as a template for anyone cloning the repo. The actual `.env.development` and `.env.production` files were committed since they only contain public URLs (no secrets). If secrets are added later, the real env files would be git-ignored and `.env.example` would be the only committed reference.
+
+### npm run preview tests the production build locally [`tip`]
+
+`npm run build` creates production files in `dist/` but doesn't serve them. `npm run preview` serves the built files locally, using production env vars. This lets you verify the production configuration before deploying — the preview hit the Render API URL, which revealed a 500 error that needs debugging next session.
+
+### Render redeployment needed after merging backend changes [`issue`]
+
+The production preview initially returned 401 (Unauthorized) because the deployed API on Render was behind — the `RequireAuthorization` removal from PR #7 hadn't been redeployed. After redeploying, the error changed to 500 (Internal Server Error), which needs investigation next session. Lesson: merging to main doesn't auto-deploy unless Render is configured for auto-deploy on push.

@@ -11,7 +11,7 @@ function Contact() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5123/cv/contact')
+    fetch(`${import.meta.env.VITE_API_URL}/cv/contact`)
       .then(response => {
         if (!response.ok) throw new Error(`API error: ${response.status}`)
         return response.json()
