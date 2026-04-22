@@ -2,7 +2,7 @@
 topic: MongoDB Integration
 slug: mongodb
 status: notes
-sessions: [2026-03-20, 2026-03-24, 2026-03-27]
+sessions: [2026-03-20, 2026-03-24, 2026-03-27, 2026-04-22]
 ---
 
 ## 2026-03-20
@@ -143,3 +143,45 @@ Used VS **find-and-replace** (`Ctrl+H`) to also rename the private field from `_
 ### Staying hands-on with AI assistance [`decision`]
 
 Claude attempted to directly edit `CvRepository.cs` to rename `_people` → `_profiles`. Rejected the tool call and did the rename myself using VS find-and-replace. **Key learning principle:** when the goal is to learn, doing the mechanical work yourself builds muscle memory and IDE familiarity. AI is most valuable as a guide explaining *what* and *why*, not as a typist.
+
+## 2026-04-22
+
+### Evolving a required field across Mongo + C# (schema migration) [`pattern`]
+
+Added a new `Location` property to `Identity` that we wanted to be non-nullable in C# (`public required string Location { get; set; }`). Because the property is `required`, existing documents in the `Profiles` collection needed the field populated *before* the API restarted — otherwise deserialization throws on the very first `GET /cv`. Order matters:
+
+1. Add the C# property in `Identity.cs` (don't start the app yet).
+2. Update the existing document in Mongo so every row has the new field.
+3. Restart / rebuild the API. Now the data shape matches the model.
+
+This is a miniature version of the database migration pattern you'd see in any real system: schema changes land in both places or they don't land at all. With `required`, C# will refuse to construct the object if the BSON document is missing the element.
+
+### `$set` with dot-notation to add a nested field via mongosh [`tip`]
+
+Updated the single document in the `Profiles` collection from the Atlas shell:
+
+```js
+db.Profiles.updateOne(
+  {},
+  { $set: { "Identity.Location": "Manchester, UK" } }
+)
+```
+
+The empty `{}` filter matches any document — fine when there's exactly one. The dotted key `"Identity.Location"` targets a field *inside* the nested `Identity` sub-document without having to replace the whole object. If I'd written `{ Identity: { Location: "..." } }`, it would have overwritten the entire `Identity` sub-document and wiped `Name`, `JobTitle`, `PersonalSummary`. Dot-notation adds/updates the one field and leaves the rest alone.
+
+### MongoDB driver rejects unknown elements by default [`concept`]
+
+Hit this error when running the API:
+
+```
+System.FormatException: 'An error occurred while deserializing the Identity property
+of class Person: Element 'Location' does not match any field or property of class Identity.'
+```
+
+Counter-intuitive wording — it said "does not match any field or property of class `Identity`", even though I *had* added `Location` to the class. The real cause was a stale build (see next note). But the error itself is worth understanding: the MongoDB C# driver is **strict** by default — if a BSON document contains an element the POCO class doesn't have, deserialization fails instead of silently ignoring it. Strictness can be relaxed by annotating a class with `[BsonIgnoreExtraElements]`, but for this project keeping strictness is the right call — schema drift between DB and code should surface loudly.
+
+### Stale build: CvModels wasn't rebuilt, API loaded the old Identity [`mistake`]
+
+Saw the "Element 'Location' does not match any field or property" error *after* adding the `Location` property and `Ctrl+F5`-ing. The mongosh update had worked and the doc had the new field — but the running API was loading the *previous* compiled `CvModels.dll`, so its in-memory `Identity` class still had only three properties. VS's incremental build decided `CvApi` hadn't changed and skipped rebuilding the dependency.
+
+Fix: `Build → Rebuild Solution` forced both `CvModels` and `CvApi` to recompile from scratch, and the next run deserialized cleanly. Lesson: when you change a class in a referenced project and the runtime behaviour still doesn't match, suspect a stale build before suspecting a logic bug.
