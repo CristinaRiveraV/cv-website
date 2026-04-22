@@ -2,7 +2,7 @@
 topic: "React Frontend Setup"
 slug: react-frontend
 status: notes
-sessions: [2026-04-08, 2026-04-09, 2026-04-10]
+sessions: [2026-04-08, 2026-04-09, 2026-04-10, 2026-04-13, 2026-04-21]
 ---
 
 ## 2026-04-08
@@ -159,3 +159,52 @@ Created `.env.example` with the expected variable names as a template for anyone
 ### Render redeployment needed after merging backend changes [`issue`]
 
 The production preview initially returned 401 (Unauthorized) because the deployed API on Render was behind — the `RequireAuthorization` removal from PR #7 hadn't been redeployed. After redeploying, the error changed to 500 (Internal Server Error), which needs investigation next session. Lesson: merging to main doesn't auto-deploy unless Render is configured for auto-deploy on push.
+
+## 2026-04-21
+
+### MUI Grid items must be direct children of a Grid container [`mistake`]
+
+Tried to split the CV page into a left sidebar (Skills, Languages) and right main column (Experience, Education). First attempt had the sidebar `<Grid size={{ xs: 12, md: 4 }}>` floating outside any container and the main column double-wrapped in an unsized `<Grid>`. Result: everything stacked vertically instead of sitting side by side. The fix: one `<Grid container spacing={4}>` with the sidebar Grid and the main Grid as direct children at the same level. Grid items only participate in the flex layout when they're direct children of a container — nested Grids become regular divs.
+
+```tsx
+<Grid container spacing={4}>
+  <Grid size={{ xs: 12, md: 4 }}>{/* sidebar */}</Grid>
+  <Grid size={{ xs: 12, md: 8 }}>{/* main */}</Grid>
+</Grid>
+```
+
+### Grouping an array by a field with reduce + Object.entries [`pattern`]
+
+To group skills by their `category` field for sectioned display, built an object with `reduce`, then turned it into an iterable of `[category, skills]` pairs with `Object.entries`. The `??=` (nullish coalescing assignment) creates the array on first hit for each category. Same shape as C# LINQ's `GroupBy().Select(g => ...)`.
+
+```tsx
+Object.entries(
+  cv.allSkills.reduce<Record<string, Skill[]>>((acc, s) => {
+    (acc[s.category] ??= []).push(s)
+    return acc
+  }, {})
+).map(([category, skills]) => (
+  <Box key={category}>{/* heading + skills */}</Box>
+))
+```
+
+### LinearProgress value maps 0–100, not the data's native range [`concept`]
+
+Skill proficiency on the backend is `0–10`, but MUI's `<LinearProgress variant="determinate" value={...} />` expects a percentage (`0–100`). Multiplied by 10 to map the ranges: `value={skill.proficiency * 10}`. A good reminder that MUI components standardise on their own ranges — check the docs rather than assuming they'll take whatever number you hand them.
+
+### Inline icon + text via flex + Typography body2 [`pattern`]
+
+For a metadata-style line like "🏠 Manchester, UK", wrapped a `HomeIcon` and a `<Typography variant="body2" color="text.secondary">` in a flex Box. `display: 'flex'` + `alignItems: 'center'` puts them on the same baseline, `gap: 0.5` spaces them, and `fontSize="small"` on the icon keeps it proportional to the body2 text. This is the idiomatic MUI way to build a labelled-icon row — no custom CSS needed.
+
+```tsx
+<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
+  <HomeIcon fontSize="small" color="primary" />
+  <Typography variant="body2" color="text.secondary">
+    Manchester, UK
+  </Typography>
+</Box>
+```
+
+### dotnet dev-certs fixes ERR_CERT_AUTHORITY_INVALID in the browser [`tip`]
+
+The Vite dev site (http://localhost:5173) calling the ASP.NET API over HTTPS (https://localhost:7254) threw `ERR_CERT_AUTHORITY_INVALID` in Chrome. The API was running fine — the browser just didn't trust the self-signed ASP.NET dev certificate. Fixed once with `dotnet dev-certs https --trust` (accept the Windows prompt, restart Chrome). One-time setup per machine.
