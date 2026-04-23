@@ -36,7 +36,7 @@ function Cv() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
             <HomeIcon fontSize="small" color="primary" />
             <Typography variant="body2" color="text.secondary">
-              Manchester, UK
+              {cv.identity.location}
             </Typography>
           </Box>
 
@@ -55,12 +55,7 @@ function Cv() {
               </Typography>
               {skills.map((skill, i) => (
                 <Box key={i} sx={{ mb: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">{skill.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {skill.proficiency}/10
-                    </Typography>
-                  </Box>
                   <LinearProgress variant="determinate" value={skill.proficiency * 10} />
                 </Box>
               ))}
