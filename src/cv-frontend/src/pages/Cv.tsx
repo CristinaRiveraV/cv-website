@@ -36,7 +36,7 @@ function Cv() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 2 }}>
             <HomeIcon fontSize="small" color="primary" />
             <Typography variant="body2" color="text.secondary">
-              Manchester, UK
+              {cv.identity.location}
             </Typography>
           </Box>
 

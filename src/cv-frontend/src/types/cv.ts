@@ -2,6 +2,7 @@ export interface Identity {
     name: string;
     jobTitle: string;
     personalSummary: string;
+    location: string;
 }
 
 export interface ContactInformation {
