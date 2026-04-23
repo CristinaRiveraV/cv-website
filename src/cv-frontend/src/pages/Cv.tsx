@@ -57,9 +57,6 @@ function Cv() {
                 <Box key={i} sx={{ mb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Typography variant="body2">{skill.name}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {skill.proficiency}/10
-                    </Typography>
                   </Box>
                   <LinearProgress variant="determinate" value={skill.proficiency * 10} />
                 </Box>
