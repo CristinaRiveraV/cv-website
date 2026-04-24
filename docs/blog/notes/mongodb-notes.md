@@ -2,7 +2,7 @@
 topic: MongoDB Integration
 slug: mongodb
 status: notes
-sessions: [2026-03-20, 2026-03-24, 2026-03-27, 2026-04-22]
+sessions: [2026-03-20, 2026-03-24, 2026-03-27, 2026-04-22, 2026-04-23]
 ---
 
 ## 2026-03-20
@@ -185,3 +185,34 @@ Counter-intuitive wording — it said "does not match any field or property of c
 Saw the "Element 'Location' does not match any field or property" error *after* adding the `Location` property and `Ctrl+F5`-ing. The mongosh update had worked and the doc had the new field — but the running API was loading the *previous* compiled `CvModels.dll`, so its in-memory `Identity` class still had only three properties. VS's incremental build decided `CvApi` hadn't changed and skipped rebuilding the dependency.
 
 Fix: `Build → Rebuild Solution` forced both `CvModels` and `CvApi` to recompile from scratch, and the next run deserialized cleanly. Lesson: when you change a class in a referenced project and the runtime behaviour still doesn't match, suspect a stale build before suspecting a logic bug.
+
+## 2026-04-23
+
+### Promoting an entry from one array to its own collection-field [`pattern`]
+
+The old CV had the AWS Certified Cloud Practitioner lumped in under Education. That's fine for a static HTML page, but once the shape is modelled in C# it becomes awkward: a certification isn't an `Education` — no `Institution`, no `EndYear`, it has an issuer and a (possibly expiring) date. Refactored by introducing a new `Certification` class and a `Certifications` array on `Person`, then moving the entry in Mongo. The migration was two mongosh operations on the single CV document:
+
+```js
+// Add the Certifications array with the AWS entry
+db.Profiles.updateOne({}, { $set: { Certifications: [ {
+  Id: "cert-aws-cloud-practitioner",
+  Name: "AWS Certified Cloud Practitioner",
+  Issuer: "Amazon Web Services",
+  IssueDate: ISODate("2024-11-01"),
+  ExpiryDate: ISODate("2027-11-01"),
+  Description: "..."
+} ] } })
+
+// Remove the AWS entry from Education
+db.Profiles.updateOne({}, { $pull: { Education: { Name: /AWS/ } } })
+```
+
+`$set` creates the field if it doesn't exist and replaces it if it does. `$pull` removes elements from an array matching the filter. Doing it in two discrete operations keeps each one easy to reason about — if the `$pull` had been wrong, the `$set` would still have succeeded and nothing would be half-migrated.
+
+### ISODate stores real dates, not strings [`tip`]
+
+Stored `IssueDate` / `ExpiryDate` as `ISODate("2024-11-01")` rather than `"2024-11-01"`. The `ISODate()` helper in mongosh creates a genuine BSON `Date` value that the MongoDB C# driver deserializes cleanly into `DateTime`. Storing the same value as a string would force either a string property on the C# side or a custom converter — neither needed when the data type is right from the start. Downside: mongosh prints them back as full ISO 8601 timestamps like `2024-11-01T00:00:00Z`, so date formatting has to happen in the API/frontend.
+
+### Slug IDs vs GUIDs for small collections [`decision`]
+
+Used `"cert-aws-cloud-practitioner"` as the Id rather than a `Guid`. Reasoning: there's only ever going to be a handful of certifications and they're all referenced by a single user. A readable slug makes Mongo queries, logs, and debugging easier (`{ Id: "cert-aws-cloud-practitioner" }` is self-documenting in a way that `{ Id: "7b3f…" }` isn't). GUIDs matter when identifiers have to be globally unique across distributed systems — overkill for a personal CV. The `Id` field on `Certification` is `string`, so it'll accept whichever convention makes sense per collection.

@@ -2,7 +2,7 @@
 topic: "React Frontend Setup"
 slug: react-frontend
 status: notes
-sessions: [2026-04-08, 2026-04-09, 2026-04-10, 2026-04-13, 2026-04-21]
+sessions: [2026-04-08, 2026-04-09, 2026-04-10, 2026-04-13, 2026-04-21, 2026-04-24]
 ---
 
 ## 2026-04-08
@@ -208,3 +208,69 @@ For a metadata-style line like "🏠 Manchester, UK", wrapped a `HomeIcon` and a
 ### dotnet dev-certs fixes ERR_CERT_AUTHORITY_INVALID in the browser [`tip`]
 
 The Vite dev site (http://localhost:5173) calling the ASP.NET API over HTTPS (https://localhost:7254) threw `ERR_CERT_AUTHORITY_INVALID` in Chrome. The API was running fine — the browser just didn't trust the self-signed ASP.NET dev certificate. Fixed once with `dotnet dev-certs https --trust` (accept the Windows prompt, restart Chrome). One-time setup per machine.
+
+## 2026-04-24
+
+### Formatting ISO dates with `toLocaleDateString` [`pattern`]
+
+The API returns `IssueDate` as a full ISO 8601 string (`"2024-11-01T00:00:00Z"`) because the backend stores it as `DateTime`. Nobody wants to read that on a CV. The browser's built-in `Intl` API handles it in one line:
+
+```tsx
+const formatMonthYear = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })
+```
+
+Result: `"November 2024"`. Swapping `month: 'long'` for `month: 'short'` gives `"Nov 2024"`. No date library (`date-fns`, `dayjs`) needed for this level of formatting — `Intl.DateTimeFormat` under the hood is built into every modern browser. Only reach for a library when you need parsing of arbitrary formats, timezone arithmetic, or relative-time output.
+
+### Frontend types drift from backend models if not kept in sync [`mistake`]
+
+Started rendering Certifications, ran the page, got nothing. The API was returning the field correctly and the new section was coded correctly. Turned out `VITE_API_URL` pointed at the live deployed Render API — which auto-deploys from `main` — so the feature branch's API changes hadn't shipped there yet. `cv.certifications` was `undefined` at runtime and `.map()` blew up silently.
+
+Two lessons in one:
+
+1. **TypeScript types describe an API contract, not reality.** `Person.certifications: Certification[]` is a promise about what the server *should* return; if the server doesn't, the runtime doesn't care what the `.d.ts` said.
+2. **Be explicit about which API the frontend dev is hitting** — local backend, local `npm run dev` hitting production, or `npm run preview` against production. Each has different guarantees about what fields exist.
+
+Fixed by checking `.env` and confirming the URL matched the running API with the new schema.
+
+### Grouping list items by a parent field with reduce + Object.entries (part two) [`pattern`]
+
+Same pattern as the skills grouping from 21 Apr, applied inside each Experience card. The real CV has responsibilities under themed subheadings like "Backend & API Development (C#/.NET)", "Cloud Engineering (AWS, Serverless, IaC)" etc. Rather than modelling a nested "group of bullets" structure, kept `Responsibility` flat with a `Category` field and grouped on render:
+
+```tsx
+Object.entries(
+  exp.responsibilities.reduce<Record<string, Responsibility[]>>((acc, r) => {
+    (acc[r.category] ??= []).push(r)
+    return acc
+  }, {})
+).map(([category, items]) => (
+  <Box key={category}>{/* subheading + bulleted items */}</Box>
+))
+```
+
+Flat-with-grouping-key is usually better than nested when the grouping might change. If I'd modelled a `ResponsibilityGroup { Category, Items[] }`, reshuffling items across groups would need Mongo array surgery. With a flat list, changing an item's category is a one-field update.
+
+### MUI bullet markers with `ListItemIcon` + `FiberManualRecordIcon` [`pattern`]
+
+MUI's `<List>` and `<ListItem>` don't render visible bullet markers out of the box — they're semantic lists with flex layout. To get a real bullet-point look that stays consistent with the MUI Card/Typography styling around it, combined `ListItemIcon` with the small-font `FiberManualRecordIcon`:
+
+```tsx
+<ListItem sx={{ pl: 2 }} alignItems="flex-start">
+  <ListItemIcon sx={{ minWidth: 20, mt: 1 }}>
+    <FiberManualRecordIcon sx={{ fontSize: 8 }} />
+  </ListItemIcon>
+  <ListItemText primary={responsibility.description} />
+</ListItem>
+```
+
+Pinning `minWidth: 20` on the icon slot stops MUI from reserving its default 56px gutter (designed for full-size icons, wildly oversized for a bullet). `alignItems="flex-start"` plus `mt: 1` on the icon aligns the bullet with the first line of the text instead of floating centered vertically when the text wraps across multiple lines.
+
+### Emoji in section headers — Unicode, not an icon [`tip`]
+
+Literally typed emoji into the header text (`💼 Experience`, `🎓 Education`). No icon library, no CSS, no build step — emoji are characters and React renders text. Gave the CV page a small personality boost without the complexity of choosing a `@mui/icons-material` equivalent for each section.
+
+### Backend had fields the frontend didn't know about [`mistake`]
+
+`Responsibility.cs` has had `Category` and `IsAchievement` since Day 1, but the TypeScript `Responsibility` interface only declared `description`. The data was coming across in the JSON all along — it just wasn't typed. When adding the grouping, tried to access `r.category` and TypeScript threw `Property 'category' does not exist on type 'Responsibility'`. Fix: add the missing field to the TS interface.
+
+This kind of drift is inevitable without codegen. OpenAPI schema generation + a TS client generator (`openapi-typescript`, `nswag`) would eliminate it — probably a future session's work.
