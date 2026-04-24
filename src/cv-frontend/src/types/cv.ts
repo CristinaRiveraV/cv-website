@@ -28,6 +28,7 @@ export interface Experience {
 
 export interface Responsibility {
     description: string;
+    category: string;
 }
 
 export interface Education {

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import {
   Typography, Card, CardContent, Box, Grid, LinearProgress,
-  List, ListItem, ListItemText, CircularProgress, Alert
+  List, ListItem, ListItemText, ListItemIcon, CircularProgress, Alert
 } from '@mui/material'
 import HomeIcon from '@mui/icons-material/Home'
-import type { Person, Skill } from '../types/cv'
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord'
+import type { Person, Skill, Responsibility } from '../types/cv'
 
 const formatMonthYear = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })
+  new Date(iso).toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })
 
 function Cv() {
   const [cv, setCv] = useState<Person | null>(null)
@@ -44,7 +45,7 @@ function Cv() {
           </Box>
 
           <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
-            Skills
+            🛠️ Skills
           </Typography>
           {Object.entries(
             cv.allSkills.reduce<Record<string, Skill[]>>((acc, s) => {
@@ -67,7 +68,7 @@ function Cv() {
 
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
-              Languages
+              🌍 Languages
             </Typography>
             <List dense>
               {cv.languages.map((lang, i) => (
@@ -86,7 +87,7 @@ function Cv() {
 
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
-              Experience
+              💼 Experience
             </Typography>
             {cv.experiences.map(exp => (
               <Card key={exp.id} sx={{ mb: 2 }} variant="outlined">
@@ -96,13 +97,28 @@ function Cv() {
                     {exp.company} — {exp.location} ({exp.mode})
                   </Typography>
                   <Typography sx={{ mb: 1 }}>{exp.summary}</Typography>
-                  <List dense disablePadding>
-                    {exp.responsibilities.map((r, i) => (
-                      <ListItem key={i} sx={{ pl: 2 }}>
-                        <ListItemText primary={r.description} />
-                      </ListItem>
-                    ))}
-                  </List>
+                  {Object.entries(
+                    exp.responsibilities.reduce<Record<string, Responsibility[]>>((acc, r) => {
+                      (acc[r.category] ??= []).push(r)
+                      return acc
+                    }, {})
+                  ).map(([category, items]) => (
+                    <Box key={category} sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mt: 1 }}>
+                        {category}
+                      </Typography>
+                      <List dense disablePadding>
+                        {items.map((r, i) => (
+                          <ListItem key={i} sx={{ pl: 2 }} alignItems="flex-start">
+                            <ListItemIcon sx={{ minWidth: 20, mt: 1 }}>
+                              <FiberManualRecordIcon sx={{ fontSize: 8 }} />
+                            </ListItemIcon>
+                            <ListItemText primary={r.description} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  ))}
                 </CardContent>
               </Card>
             ))}
@@ -110,7 +126,7 @@ function Cv() {
 
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
-              Certifications
+              🏅 Certifications
             </Typography>
             {cv.certifications.map(cert => (
               <Card key={cert.id} sx={{ mb: 2 }} variant="outlined">
@@ -128,7 +144,7 @@ function Cv() {
 
           <Box sx={{ mb: 4 }}>
             <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
-              Education
+              🎓 Education
             </Typography>
             {cv.education.map(edu => (
               <Card key={edu.id} sx={{ mb: 2 }} variant="outlined">

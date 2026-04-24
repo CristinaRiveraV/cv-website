@@ -1,11 +1,13 @@
+using System.Text.Json.Serialization;
+
 public enum SkillCategory
 {
     Other,
-    SoftSkills,
+    [JsonStringEnumMemberName("Soft Skills")] SoftSkills,
     Backend,
     Frontend,
     Database,
     DevOps, 
     Testing,
-    AIandTooling
+    [JsonStringEnumMemberName("AI & Tooling")] AIandTooling
 }
