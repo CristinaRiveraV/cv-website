@@ -40,6 +40,15 @@ export interface Education {
     description: string;
 }
 
+export interface Certification {
+      id: string;
+      name: string;
+      issuer: string;
+      issueDate: string;
+      expiryDate: string | null;
+      description: string;
+  }
+
 export interface Skill {
     name: string;
     category: string;
@@ -55,6 +64,7 @@ export interface Person {
     identity: Identity;
     experiences: Experience[];
     education: Education[];
+    certifications: Certification[];
     projects: Project[];
     additionalSkills: Skill[];
     languages: Language[];

@@ -6,6 +6,9 @@ import {
 import HomeIcon from '@mui/icons-material/Home'
 import type { Person, Skill } from '../types/cv'
 
+const formatMonthYear = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-UK', { year: 'numeric', month: 'long' })
+
 function Cv() {
   const [cv, setCv] = useState<Person | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +58,7 @@ function Cv() {
               </Typography>
               {skills.map((skill, i) => (
                 <Box key={i} sx={{ mb: 1 }}>
-                    <Typography variant="body2">{skill.name}</Typography>
+                  <Typography variant="body2">{skill.name}</Typography>
                   <LinearProgress variant="determinate" value={skill.proficiency * 10} />
                 </Box>
               ))}
@@ -100,6 +103,24 @@ function Cv() {
                       </ListItem>
                     ))}
                   </List>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h4" component="h2" sx={{ borderBottom: 2, borderColor: 'primary.main', pb: 1, mb: 2 }}>
+              Certifications
+            </Typography>
+            {cv.certifications.map(cert => (
+              <Card key={cert.id} sx={{ mb: 2 }} variant="outlined">
+                <CardContent>
+                  <Typography variant="h6">{cert.name}</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {cert.issuer} — {formatMonthYear(cert.issueDate)}
+                    {cert.expiryDate && ` (expires ${formatMonthYear(cert.expiryDate)})`}
+                  </Typography>
+                  <Typography>{cert.description}</Typography>
                 </CardContent>
               </Card>
             ))}

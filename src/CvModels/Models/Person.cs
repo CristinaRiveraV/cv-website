@@ -9,6 +9,7 @@ public class Person
     public required ContactInformation ContactInformation { get; set; }
     public required List<Experience> Experiences { get; set; }
     public required List<Education> Education { get; set; }
+    public required List<Certification> Certifications { get; set; }
     public required List<Project> Projects { get; set; }    
     public required List<Skill> AdditionalSkills { get; set; }
     public required List<Language> Languages { get; set; }
