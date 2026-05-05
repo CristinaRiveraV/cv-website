@@ -13,6 +13,14 @@ public static class CvEndpoints
             .Produces<Identity>()
             .WithSummary("Get name, title, and personal summary");
 
+        cvGroup.MapPut("/identity", (Identity identity, CvService cv) => Results.Ok(cv.UpdateIdentity(identity)))
+             .RequireAuthorization()
+             .Accepts<Identity>("application/json")
+             .Produces<Identity>()
+             .Produces(StatusCodes.Status401Unauthorized)
+             .Produces(StatusCodes.Status403Forbidden)
+             .WithSummary("Replace name, title, summary, and location");
+
         cvGroup.MapGet("/contact", (CvService cv) => cv.GetContactInformation())
             .Produces<ContactInformation>()
             .WithSummary("Get email, phonenumber, linkedin, github and portfolio links");

@@ -2,7 +2,7 @@
 topic: CV Admin CRUD Endpoints (with Auth0 RBAC)
 slug: cv-admin-crud-endpoints
 status: notes
-sessions: [2026-04-28]
+sessions: [2026-04-28, 2026-05-05]
 ---
 
 ## 2026-04-28
@@ -101,3 +101,129 @@ Step 1 of the implementation plan is **"auth scaffolding"** — define the polic
 3. Verify: ⏸️ pending — confirm anonymous GETs still return 200 after the code change
 
 Resume next session by creating the M2M app in Auth0, fetching a token, then adding the `CvWrite` policy to `Program.cs`.
+
+## 2026-05-05
+
+### M2M token flow end-to-end [`pattern`]
+
+Created the M2M Application in Auth0 (`cv-api-insomnia`), authorised it against the `cv-api` API, and ticked `cv:write` on its permissions. Then in Insomnia:
+
+```http
+POST https://criveravaldez.uk.auth0.com/oauth/token
+{
+  "client_id": "...",
+  "client_secret": "...",
+  "audience": "https://cv-api",
+  "grant_type": "client_credentials"
+}
+```
+
+Response includes an `access_token` and `expires_in: 86400` (24h). Decoded on jwt.io, the payload had:
+
+```json
+{
+  "aud": "https://cv-api",
+  "scope": "cv:write",
+  "gty": "client-credentials",
+  "permissions": ["cv:write"]
+}
+```
+
+`gty: client-credentials` is the giveaway that this is an M2M token — no user `sub`, just the Application's client id. `permissions` array is the one our `CvWrite` policy is supposed to match.
+
+### Three-layer write pattern: endpoint → service → repository [`pattern`]
+
+First write endpoint (`PUT /cv/identity`) followed the same shape the read endpoints already use, just with an update method on each layer:
+
+```csharp
+// Repository: MongoDB $set on a single field
+public void UpdateIdentity(Identity identity) =>
+    _profiles.UpdateOne(
+        Builders<Person>.Filter.Empty,
+        Builders<Person>.Update.Set(p => p.Identity, identity));
+
+// Service: invalidate cache, return what was saved
+public Identity UpdateIdentity(Identity identity)
+{
+    _repository.UpdateIdentity(identity);
+    _cachedPerson = null;
+    return identity;
+}
+
+// Endpoint: minimal-API binding, body → Identity, return 200
+cvGroup.MapPut("/identity", (Identity identity, CvService cv) =>
+        Results.Ok(cv.UpdateIdentity(identity)))
+    .RequireAuthorization("CvWrite")
+    .Accepts<Identity>("application/json")
+    .Produces<Identity>();
+```
+
+`Filter.Empty` matches the only Person document (we have a single-doc design). `Update.Set` is MongoDB's `$set` — replaces just that field, leaves siblings alone.
+
+### Cache invalidation is the service's job [`concept`]
+
+`CvService` caches the Person on first read (`_cachedPerson`). Without invalidation after a write, GETs return stale data until the app restarts. Setting `_cachedPerson = null` forces the next read to refetch. Classic "two hard things in computer science": cache invalidation, naming things, and off-by-one errors.
+
+Doing it inside the service (not the repository) is deliberate: the repository talks to Mongo, the service is the only thing that knows there's a cache. Layer responsibilities stay clean.
+
+### Required properties give you free 400s [`tip`]
+
+`Identity` uses `required` properties:
+
+```csharp
+public class Identity
+{
+    public required string Name { get; set; }
+    public required string JobTitle { get; set; }
+    public required string PersonalSummary { get; set; }
+    public required string Location { get; set; }
+}
+```
+
+If a PUT body is missing any of these, System.Text.Json fails deserialisation and ASP.NET returns 400 automatically — no validation code needed. Worth knowing as the cheap-and-cheerful first line of input validation.
+
+### PUT vs POST: idempotency decides [`concept`]
+
+A 405 response prompted "wait, are we using PUT or POST and why?" — and the answer is the same rule REST has always had:
+
+| Verb | Means | Idempotent? |
+|---|---|---|
+| **PUT** | Replace the resource at this exact URL | Yes — same end state on every call |
+| **POST** | Create a new resource; server picks the URL | No — each call creates another |
+
+Single-object endpoints (`/cv/identity`, `/cv/contact`) only ever PUT — there's only ever one, the URL already names it. List endpoints use POST to create (server generates the id and returns it via `Location: /cv/experiences/{newId}`) and PUT `/{id}` to replace a known one.
+
+A 405 is a useful smell: it means "the URL exists but not for this method" — different from 404 ("URL doesn't exist"). Caused by sending POST to a PUT-only route.
+
+### The `CvWrite` policy 403 mystery [`mistake`]
+
+After wiring `.RequireAuthorization("CvWrite")` onto the PUT, calls with a valid token containing `permissions: ["cv:write"]` returned **403 Forbidden**. 403 is the giveaway: authentication succeeded (token validated), but the policy rejected the request — so `RequireClaim("permissions", "cv:write")` isn't matching what .NET actually sees in the token.
+
+Diagnostic plan:
+
+1. **Swap the policy out**: change `.RequireAuthorization("CvWrite")` → `.RequireAuthorization()` (no policy, just "any authenticated user"). Confirmed this returns 200 — so auth + the JWT pipeline are fine. Only the policy is failing.
+2. **Dump the claims**: temporarily project `User.Claims` into the response to see what claim type the `permissions` value actually arrives as. Pending — paused before running this.
+
+Most likely cause: .NET's JWT bearer handler maps inbound claim names by default (`MapInboundClaims = true`). Non-standard claims like `permissions` can end up renamed to a long URI like `http://schemas.../permissions`, so `RequireClaim("permissions", ...)` looks for a claim type that no longer exists. Fix would be one line in `Program.cs`:
+
+```csharp
+.AddJwtBearer(options =>
+{
+    options.Authority = "...";
+    options.Audience = "...";
+    options.MapInboundClaims = false; // keep claim names as-is
+});
+```
+
+Confirming with the claim dump next session.
+
+### Where we paused [`tip`]
+
+- ✅ M2M Application + token flow working end-to-end
+- ✅ Repository / Service / Endpoint methods for `PUT /cv/identity` written
+- ✅ Cache invalidation in the service
+- ⚠️ Endpoint currently has `.RequireAuthorization()` (no policy) from Diagnostic 1 — works but isn't the intended security model. **Must be reverted to `.RequireAuthorization("CvWrite")` once the claim mapping is fixed.**
+- ⏸️ Run the claims-dump diagnostic to confirm what claim type `permissions` is actually arriving as
+- ⏸️ Apply `MapInboundClaims = false` (or whichever fix the diagnostic points to)
+- ⏸️ Re-attach `"CvWrite"` to the endpoint and re-test the four paths (no token → 401, wrong-permission token → 403, valid token → 200, GET after PUT shows new value)
+- ⏸️ Then: replicate the pattern for `PUT /cv/contact`

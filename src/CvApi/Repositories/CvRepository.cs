@@ -19,4 +19,9 @@ public class CvRepository
 
     public void InsertPerson(Person person) =>
         _profiles.InsertOne(person);
+
+    public void UpdateIdentity(Identity identity) =>
+        _profiles.UpdateOne(
+            Builders<Person>.Filter.Empty,
+            Builders<Person>.Update.Set(p => p.Identity, identity));
 }
