@@ -49,4 +49,11 @@ public class CvService
         _cachedPerson = null;
         return experience;
     }
+
+    public Experience? UpdateExperience(string id, Experience experience)
+    {
+        if (!_repository.TryUpdateExperience(id, experience)) return null;
+        _cachedPerson = null;
+        return experience;
+    }
 }

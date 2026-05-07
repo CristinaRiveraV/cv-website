@@ -386,3 +386,56 @@ Single-object PUTs (Identity, Contact) couldn't fail at the service layer — ov
 | Delete | id not found | `bool DeleteExperience(string id)` — false = 404 |
 
 Endpoint inspects the return value and chooses the status code. Cleaner than throwing exceptions for control flow, and avoids dragging a `Result<T>` library in.
+
+### PUT /cv/experiences/{id}: positional `$` operator [`pattern`]
+
+PUT-by-id introduces MongoDB's positional `$` operator — "update the array element matched by the filter, leave siblings untouched":
+
+```csharp
+public bool TryUpdateExperience(string id, Experience experience)
+{
+    var filter = Builders<Person>.Filter.ElemMatch(p => p.Experiences, e => e.Id == id);
+    var update = Builders<Person>.Update.Set(p => p.Experiences.FirstMatchingElement(), experience);
+    var result = _profiles.UpdateOne(filter, update);
+    return result.MatchedCount > 0;
+}
+```
+
+Two pieces working together: `ElemMatch` in the filter tells Mongo which element matched, and `FirstMatchingElement()` in the update refers back to that match by position. Without the positional operator the only option would be load-modify-save, which is two round trips and unsafe under concurrent writes.
+
+`MatchedCount > 0`, not `ModifiedCount > 0`: a PUT with the same body as the current state should still return 200, not 404. "Did we find the resource?" is the question 404 is asking, not "did the bytes change?".
+
+### `FirstMatchingElement()` replaces the old `[-1]` shorthand [`mistake`]
+
+First attempt used `Builders<Person>.Update.Set(p => p.Experiences[-1], experience)` — older MongoDB C# driver shorthand for the positional operator (negative indexing meaning "the matched element"). Got:
+
+```
+MongoDB.Driver.Linq.ExpressionNotSupportedException:
+Expression not supported: p.Experiences.get_Item(-1) because negative indexes are not valid.
+To use the positional operator $ use FirstMatchingElement instead of an index value of -1.
+```
+
+The driver authors deprecated the `[-1]` magic in a recent version. New form is `FirstMatchingElement()` — explicit method call, says exactly what it does. Fix is one line:
+
+```csharp
+.Set(p => p.Experiences.FirstMatchingElement(), experience)
+```
+
+Translates to the same `$` positional operator on the wire, just less cute. Worth flagging because plenty of older blog posts and Stack Overflow answers still show the `[-1]` form.
+
+### URL id vs body id: reject mismatches [`decision`]
+
+PUT `/cv/experiences/exp-zen-internet` with a body containing `"id": "exp-cgi"` — what's the contract? Three options:
+
+- Reject with 400 (strictest)
+- Trust the URL, ignore body id
+- Trust the URL, overwrite body id silently
+
+Picked **reject with 400**. The caller addressed a specific resource; if the body claims to be a different one, that's a caller bug and silent acceptance would mask it. One-line check at the top of the endpoint:
+
+```csharp
+if (id != experience.Id)
+    return Results.BadRequest(new { error = $"URL id '{id}' does not match body id '{experience.Id}'" });
+```
+
+Same principle generalises: when two sources of truth show up in one request (URL vs body, header vs body, query string vs path), pick one as authoritative *and* reject contradictions instead of silently preferring one.

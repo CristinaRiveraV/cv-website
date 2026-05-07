@@ -63,6 +63,25 @@ public static class CvEndpoints
             .Produces(StatusCodes.Status409Conflict)
             .WithSummary("Add a new work experience");
 
+        cvGroup.MapPut("/experiences/{id}", (string id, Experience experience, CvService cv) =>
+        {
+            if (id != experience.Id)
+                return Results.BadRequest(new { error = $"URL id '{id}' does not match body id '{experience.Id}'" });
+
+            var updated = cv.UpdateExperience(id, experience);
+            return updated is not null
+                ? Results.Ok(updated)
+                : Results.NotFound(new { error = $"Experience with id '{id}' not found" });
+        })
+          .RequireAuthorization("CvWrite")
+          .Accepts<Experience>("application/json")
+          .Produces<Experience>()
+          .Produces(StatusCodes.Status400BadRequest)
+          .Produces(StatusCodes.Status401Unauthorized)
+          .Produces(StatusCodes.Status403Forbidden)
+          .Produces(StatusCodes.Status404NotFound)
+          .WithSummary("Replace an existing work experience by ID");
+
         cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation())
             .Produces<List<Education>>()
             .WithSummary("Get a list of all education history");

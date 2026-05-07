@@ -1,5 +1,6 @@
 ﻿using CvApi.Settings;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace CvApi.Repositories;
 
@@ -41,5 +42,13 @@ public class CvRepository
             Builders<Person>.Filter.Empty,
             Builders<Person>.Update.Push(p => p.Experiences, experience));
         return true;
+    }
+
+    public bool TryUpdateExperience(string id, Experience experience)
+    {
+        var filter = Builders<Person>.Filter.ElemMatch(p => p.Experiences, e => e.Id == id);
+        var update = Builders<Person>.Update.Set(p => p.Experiences.FirstMatchingElement(), experience);
+        var result = _profiles.UpdateOne(filter, update);
+        return result.MatchedCount > 0;
     }
 }
