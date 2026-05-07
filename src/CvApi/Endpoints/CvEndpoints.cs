@@ -48,6 +48,21 @@ public static class CvEndpoints
             .Produces(StatusCodes.Status404NotFound)
             .WithSummary("Get a specific work experience by ID");
 
+        cvGroup.MapPost("/experiences", (Experience experience, CvService cv) =>
+        {
+            var created = cv.CreateExperience(experience);
+            return created is not null
+                ? Results.Created($"/cv/experiences/{created.Id}", created)
+                : Results.Conflict(new { error = $"Experience with id '{experience.Id}' already exists" });
+        })
+            .RequireAuthorization("CvWrite")
+            .Accepts<Experience>("application/json")
+            .Produces<Experience>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status409Conflict)
+            .WithSummary("Add a new work experience");
+
         cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation())
             .Produces<List<Education>>()
             .WithSummary("Get a list of all education history");

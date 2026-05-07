@@ -29,4 +29,17 @@ public class CvRepository
         _profiles.UpdateOne(
             Builders<Person>.Filter.Empty,
             Builders<Person>.Update.Set(p => p.ContactInformation, contact));
+
+    public bool TryAddExperience(Experience experience)
+    {
+        var idTaken = _profiles
+            .Find(Builders<Person>.Filter.ElemMatch(p => p.Experiences, e => e.Id == experience.Id))
+            .Any();
+        if (idTaken) return false;
+
+        _profiles.UpdateOne(
+            Builders<Person>.Filter.Empty,
+            Builders<Person>.Update.Push(p => p.Experiences, experience));
+        return true;
+    }
 }

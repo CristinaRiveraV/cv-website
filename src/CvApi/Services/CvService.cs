@@ -42,4 +42,11 @@ public class CvService
         _cachedPerson = null; // invalidate cache so next read refetches
         return contact;
     }
+
+    public Experience? CreateExperience(Experience experience)
+    {
+        if (!_repository.TryAddExperience(experience)) return null;
+        _cachedPerson = null;
+        return experience;
+    }
 }

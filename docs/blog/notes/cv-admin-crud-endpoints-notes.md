@@ -300,3 +300,89 @@ Fix is to make the handler discriminate: only catch *unexpected* exceptions for 
 - ✅ `PUT /cv/contact` shipped, same pattern, same auth
 - ⏸️ Next session: list resources — `POST/PUT/DELETE /cv/experiences[/{id}]`. New shapes to learn: 201 + Location header, 204 No Content, 404 on missing id.
 - 📝 TODO (separate PR): fix global exception handler so framework 4xx exceptions surface as their proper status codes instead of 500.
+
+### Client-provided Id over server-generated [`decision`]
+
+The spec originally said `POST /cv/experiences` would receive an `Experience` "no Id — server generates". Reconsidered before scaffolding because:
+
+- Existing Ids are hand-curated kebab slugs (`exp-zen-internet`, `exp-cgi`) — meaningful, not random
+- `Experience.Id` is `required`, so a body without Id fails deserialisation. Either drop `required` (weakens read model) or introduce an `ExperienceCreate` DTO (overkill for a single-writer app)
+- Server-generated GUIDs would break the slug pattern; auto-slugging from role+company can clash and gets unwieldy
+
+Picked **option C: client provides the Id, server checks uniqueness**. Spec updated to `Experience (Id required, must be unique)`. Clashes return `409 Conflict`. Honest for the actual usage shape (one writer, curated Ids); revisit if a second writer ever appears.
+
+Rule of thumb: server-generated Ids are right when the caller has no business naming the resource (random users, machine-created records). Client-provided Ids are right when the caller knows what to call the thing and wants the URL to mean something. CV experiences are the second case.
+
+### First list-resource write: POST /cv/experiences [`pattern`]
+
+New shapes vs the single-object PUTs:
+
+```csharp
+// Repository: ElemMatch filter to detect duplicate id, then $push to append
+public bool TryAddExperience(Experience experience)
+{
+    var idTaken = _profiles
+        .Find(Builders<Person>.Filter.ElemMatch(p => p.Experiences, e => e.Id == experience.Id))
+        .Any();
+    if (idTaken) return false;
+
+    _profiles.UpdateOne(
+        Builders<Person>.Filter.Empty,
+        Builders<Person>.Update.Push(p => p.Experiences, experience));
+    return true;
+}
+
+// Service: nullable return signals "happy path or conflict"
+public Experience? CreateExperience(Experience experience)
+{
+    if (!_repository.TryAddExperience(experience)) return null;
+    _cachedPerson = null;
+    return experience;
+}
+
+// Endpoint: 201 + Location, or 409 with error body
+cvGroup.MapPost("/experiences", (Experience experience, CvService cv) =>
+{
+    var created = cv.CreateExperience(experience);
+    return created is not null
+        ? Results.Created($"/cv/experiences/{created.Id}", created)
+        : Results.Conflict(new { error = $"Experience with id '{experience.Id}' already exists" });
+})
+    .RequireAuthorization("CvWrite")
+    .Produces<Experience>(StatusCodes.Status201Created)
+    .Produces(StatusCodes.Status409Conflict);
+```
+
+### New Mongo operators: `ElemMatch` and `Push` [`concept`]
+
+`Builders<Person>.Filter.ElemMatch(p => p.Experiences, e => e.Id == newId)` translates to Mongo's `$elemMatch` — "find Person documents where *any* element of `Experiences` matches the predicate". Cheap way to ask "is this Id already in the array?" without pulling the whole document.
+
+`Builders<Person>.Update.Push(p => p.Experiences, experience)` is `$push` — appends to the array atomically. Compared to load-modify-save (`var p = Find(); p.Experiences.Add(...); ReplaceOne(p)`), `$push` is one round trip and is safe under concurrent writes — two simultaneous POSTs both append, neither clobbers.
+
+The duplicate check + push isn't atomic together (two POSTs with the same Id could both pass the check and both push), but for a single-writer admin endpoint that's fine. A real multi-writer app would use a unique index on the embedded array, which Mongo supports.
+
+### `Results.Created(uri, body)` does both jobs [`tip`]
+
+Two things conspired into one minimal-API call:
+
+```csharp
+Results.Created($"/cv/experiences/{created.Id}", created)
+```
+
+- Status code = `201 Created`
+- Response header `Location: /cv/experiences/exp-test-acme` added automatically
+- Response body = the created entity
+
+The `Location` header is the REST convention pointing the client at the new resource — important because a server-generated id (or, in our case, even a client-provided one) is what the caller needs to GET/PUT/DELETE later. Insomnia surfaces it under "Headers" on the response.
+
+### Service signature pattern: nullable return = "did it work?" [`pattern`]
+
+Single-object PUTs (Identity, Contact) couldn't fail at the service layer — overwriting is always valid. List operations have new failure modes:
+
+| Operation | Failure | Service signature |
+|---|---|---|
+| Create | id already exists | `Experience? CreateExperience(...)` — null = conflict |
+| Update | id not found | `Experience? UpdateExperience(string id, ...)` — null = 404 |
+| Delete | id not found | `bool DeleteExperience(string id)` — false = 404 |
+
+Endpoint inspects the return value and chooses the status code. Cleaner than throwing exceptions for control flow, and avoids dragging a `Result<T>` library in.

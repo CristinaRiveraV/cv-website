@@ -49,7 +49,7 @@ Same reasoning as Identity.
 |---|---|---|---|---|
 | GET | `/cv/experiences` | – | – | ✅ |
 | GET | `/cv/experiences/{id}` | – | – | ✅ |
-| POST | `/cv/experiences` | `cv:write` | `Experience` (no Id — server generates) | 🚧 |
+| POST | `/cv/experiences` | `cv:write` | `Experience` (Id required, must be unique) | 🚧 |
 | PUT | `/cv/experiences/{id}` | `cv:write` | `Experience` (full replace) | 🚧 |
 | DELETE | `/cv/experiences/{id}` | `cv:write` | – | 🚧 |
 
