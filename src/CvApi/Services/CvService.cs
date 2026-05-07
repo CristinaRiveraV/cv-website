@@ -35,4 +35,11 @@ public class CvService
         _cachedPerson = null; // invalidate cache so next read refetches
         return identity;
     }
+    
+    public ContactInformation UpdateContactInformation(ContactInformation contact)
+    {
+        _repository.UpdateContactInformation(contact);
+        _cachedPerson = null; // invalidate cache so next read refetches
+        return contact;
+    }
 }

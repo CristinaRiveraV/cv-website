@@ -14,7 +14,7 @@ public static class CvEndpoints
             .WithSummary("Get name, title, and personal summary");
 
         cvGroup.MapPut("/identity", (Identity identity, CvService cv) => Results.Ok(cv.UpdateIdentity(identity)))
-             .RequireAuthorization()
+             .RequireAuthorization("CvWrite")
              .Accepts<Identity>("application/json")
              .Produces<Identity>()
              .Produces(StatusCodes.Status401Unauthorized)
@@ -24,6 +24,14 @@ public static class CvEndpoints
         cvGroup.MapGet("/contact", (CvService cv) => cv.GetContactInformation())
             .Produces<ContactInformation>()
             .WithSummary("Get email, phonenumber, linkedin, github and portfolio links");
+
+        cvGroup.MapPut("/contact", (ContactInformation contact, CvService cv) => Results.Ok(cv.UpdateContactInformation(contact)))
+            .RequireAuthorization("CvWrite")
+            .Accepts<ContactInformation>("application/json")
+            .Produces<ContactInformation>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .WithSummary("Replace email, phonenumber, linkedin, github and portfolio links");
 
         cvGroup.MapGet("/experiences", (CvService cv) => cv.GetExperiences())
             .Produces<List<Experience>>()

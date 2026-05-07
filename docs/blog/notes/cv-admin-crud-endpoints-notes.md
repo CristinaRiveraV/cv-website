@@ -2,7 +2,7 @@
 topic: CV Admin CRUD Endpoints (with Auth0 RBAC)
 slug: cv-admin-crud-endpoints
 status: notes
-sessions: [2026-04-28, 2026-05-05]
+sessions: [2026-04-28, 2026-05-05, 2026-05-07]
 ---
 
 ## 2026-04-28
@@ -227,3 +227,76 @@ Confirming with the claim dump next session.
 - ⏸️ Apply `MapInboundClaims = false` (or whichever fix the diagnostic points to)
 - ⏸️ Re-attach `"CvWrite"` to the endpoint and re-test the four paths (no token → 401, wrong-permission token → 403, valid token → 200, GET after PUT shows new value)
 - ⏸️ Then: replicate the pattern for `PUT /cv/contact`
+
+## 2026-05-07
+
+### The "policy mystery" was a false alarm [`mistake`]
+
+Last session ended with `.RequireAuthorization("CvWrite")` returning 403 even though the M2M token had `permissions: ["cv:write"]`, and the speculation was that .NET's `MapInboundClaims` was renaming the claim. Resumed today by re-attaching `"CvWrite"` to `PUT /cv/identity` — and it just worked. 200, no claim-dump needed.
+
+So the previous 403 wasn't a claim-mapping problem after all. Most likely it was an Auth0 RBAC change that hadn't propagated yet, or the token in use last session was minted before `cv:write` was granted to the M2M Application. Lesson: when a 403 mystery appears, test with a *freshly minted* token before reaching for framework-level diagnoses. Tokens are cached for 24h by default; "I added the permission and it didn't work" can just mean "I'm still using the old token."
+
+### Mirror pattern: Identity → Contact PUT [`pattern`]
+
+Second write endpoint took ~5 minutes once the Identity pattern was clear. Three layers, copy-paste, swap the type:
+
+```csharp
+// Repository
+public void UpdateContactInformation(ContactInformation contact) =>
+    _profiles.UpdateOne(
+        Builders<Person>.Filter.Empty,
+        Builders<Person>.Update.Set(p => p.ContactInformation, contact));
+
+// Service
+public ContactInformation UpdateContactInformation(ContactInformation contact)
+{
+    _repository.UpdateContactInformation(contact);
+    _cachedPerson = null;
+    return contact;
+}
+
+// Endpoint
+cvGroup.MapPut("/contact", (ContactInformation contact, CvService cv) =>
+        Results.Ok(cv.UpdateContactInformation(contact)))
+    .RequireAuthorization("CvWrite")
+    .Accepts<ContactInformation>("application/json")
+    .Produces<ContactInformation>()
+    .Produces(StatusCodes.Status401Unauthorized)
+    .Produces(StatusCodes.Status403Forbidden);
+```
+
+Single-object endpoints really are this small. The interesting work — auth, caching, layer responsibilities — was already paid for on Identity. List resources (Experiences, Education, etc.) will introduce the actual new shapes: id-based routing, 201/204/404 paths, POST + Location headers.
+
+### Security gap caught while mirroring [`mistake`]
+
+Spotted that `PUT /cv/identity` was using `.RequireAuthorization()` (no policy name) — a leftover from the previous session's debugging when the policy was throwing 403s and got swapped out as a workaround. That bare form means "any authenticated user", so any token from the Auth0 tenant — even without `cv:write` — would have been accepted. The intended security model (from the spec) is `RequireAuthorization("CvWrite")`, which checks the `permissions` claim.
+
+Fixed in the same diff as adding Contact PUT. Worth remembering: temporary debug workarounds need to be tracked back. A "// FIXME: revert this" comment would have caught it sooner than spotting it via code review on the next endpoint.
+
+### 400 Bad Request that wasn't [`mistake`]
+
+While testing, sent a Contact body to the wrong URL (`/cv/identity` instead of `/cv/contact`). Insomnia returned **500**, not 400. The stack trace showed `BadHttpRequestException: missing required properties` — exactly the validation failure that should be a 400. So why 500?
+
+The global exception handler in `Program.cs` catches **everything**, including framework-level 4xx exceptions:
+
+```csharp
+app.UseExceptionHandler(appError =>
+{
+    appError.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        // ... writes generic error body
+    });
+});
+```
+
+`BadHttpRequestException` would surface as a clean 400 if it were allowed to bubble up — instead it hits the catch-all and gets re-mapped to 500. The `400 Bad Request` row in `docs/api-endpoints.md` is therefore aspirational right now, not actual.
+
+Fix is to make the handler discriminate: only catch *unexpected* exceptions for the 500 path, let known framework exceptions through. Filed as a TODO — not blocking this branch, but worth fixing before adding more validation-heavy endpoints (Experiences/Education CRUD, where the 400 path matters more).
+
+### Where we paused [`tip`]
+
+- ✅ `PUT /cv/identity` correctly enforces `"CvWrite"` policy (verified: 200 with cv:write token)
+- ✅ `PUT /cv/contact` shipped, same pattern, same auth
+- ⏸️ Next session: list resources — `POST/PUT/DELETE /cv/experiences[/{id}]`. New shapes to learn: 201 + Location header, 204 No Content, 404 on missing id.
+- 📝 TODO (separate PR): fix global exception handler so framework 4xx exceptions surface as their proper status codes instead of 500.

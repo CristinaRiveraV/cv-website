@@ -24,4 +24,9 @@ public class CvRepository
         _profiles.UpdateOne(
             Builders<Person>.Filter.Empty,
             Builders<Person>.Update.Set(p => p.Identity, identity));
+
+    public void UpdateContactInformation(ContactInformation contact) =>
+        _profiles.UpdateOne(
+            Builders<Person>.Filter.Empty,
+            Builders<Person>.Update.Set(p => p.ContactInformation, contact));
 }
