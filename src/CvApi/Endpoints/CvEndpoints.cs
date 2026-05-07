@@ -82,6 +82,19 @@ public static class CvEndpoints
           .Produces(StatusCodes.Status404NotFound)
           .WithSummary("Replace an existing work experience by ID");
 
+        cvGroup.MapDelete("/experiences/{id}", (string id, CvService cv) =>
+        {
+            return cv.DeleteExperience(id)
+                ? Results.NoContent()
+                : Results.NotFound(new { error = $"Experience with id '{id}' not found" });
+        })
+          .RequireAuthorization("CvWrite")
+          .Produces(StatusCodes.Status204NoContent)
+          .Produces(StatusCodes.Status401Unauthorized)
+          .Produces(StatusCodes.Status403Forbidden)
+          .Produces(StatusCodes.Status404NotFound)
+          .WithSummary("Delete a work experience by ID");
+
         cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation())
             .Produces<List<Education>>()
             .WithSummary("Get a list of all education history");

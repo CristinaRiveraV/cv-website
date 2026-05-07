@@ -51,4 +51,11 @@ public class CvRepository
         var result = _profiles.UpdateOne(filter, update);
         return result.MatchedCount > 0;
     }
+
+    public bool TryDeleteExperience(string id)
+    {
+        var update = Builders<Person>.Update.PullFilter(p => p.Experiences, e => e.Id == id);
+        var result = _profiles.UpdateOne(Builders<Person>.Filter.Empty, update);
+        return result.ModifiedCount > 0;
+    }
 }

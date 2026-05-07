@@ -56,4 +56,11 @@ public class CvService
         _cachedPerson = null;
         return experience;
     }
+
+    public bool DeleteExperience(string id)
+    {
+        if (!_repository.TryDeleteExperience(id)) return false;
+        _cachedPerson = null;
+        return true;
+    }
 }

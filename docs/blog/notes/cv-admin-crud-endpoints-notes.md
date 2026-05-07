@@ -439,3 +439,50 @@ if (id != experience.Id)
 ```
 
 Same principle generalises: when two sources of truth show up in one request (URL vs body, header vs body, query string vs path), pick one as authoritative *and* reject contradictions instead of silently preferring one.
+
+### DELETE /cv/experiences/{id}: `$pull` to remove from array [`pattern`]
+
+Last endpoint in the Experiences set. Smallest of the three — no body, no positional update:
+
+```csharp
+public bool TryDeleteExperience(string id)
+{
+    var update = Builders<Person>.Update.PullFilter(p => p.Experiences, e => e.Id == id);
+    var result = _profiles.UpdateOne(Builders<Person>.Filter.Empty, update);
+    return result.ModifiedCount > 0;
+}
+```
+
+`PullFilter` translates to `$pull` — removes any array element matching the predicate. The outer filter is `Empty` because we always have one Person doc, and `PullFilter` already scopes to the array element itself.
+
+### `MatchedCount` vs `ModifiedCount`: depends on the filter [`concept`]
+
+PUT used `MatchedCount > 0`. DELETE uses `ModifiedCount > 0`. Why?
+
+| Endpoint | Outer filter | What MatchedCount means | What ModifiedCount means | Which to check |
+|---|---|---|---|---|
+| PUT | `ElemMatch(e => e.Id == id)` | "we found a Person whose Experiences contains this id" | "the array element actually changed" | **Matched** — that's what 404 asks |
+| DELETE | `Filter.Empty` | "we found a Person" — always true (we have one) | "the array shrank" — i.e. the element existed | **Modified** — only signal of removal |
+
+Same `UpdateOne` call, different counts to consult. The lesson: the meaning of these counts is a function of *what filter you wrote*, not a fixed convention. When you change the filter shape, re-think which count answers your question.
+
+### `Results.NoContent()` for successful deletes [`tip`]
+
+`Results.NoContent()` = HTTP `204 No Content` = "I did the thing, there's nothing meaningful to send back". The body is empty by spec — clients should not expect a JSON payload (Insomnia displays "No body returned" which is correct, not a bug).
+
+`200 OK` with an empty body would also work but is wrong-ish: 200 implies "here's the resource", and there isn't one anymore. 204 is the deliberate choice when "we did it, nothing to say".
+
+### Wrap of the Experiences CRUD set [`tip`]
+
+Three endpoints, three new MongoDB operators (`$push`, `$` positional, `$pull`), three new HTTP shapes (`201 Created` + `Location`, `404 Not Found` on missing id, `204 No Content`). Plus all four standard verbs and seven status codes (200/201/204/400/401/403/404/409) — every shape Education / Certifications / Projects will need.
+
+Education / Certifications / Projects are now copy-paste:
+- Identical layered pattern (repository / service / endpoint)
+- Same `TryAdd` / `TryUpdate` / `TryDelete` repository signatures with their respective Mongo operators
+- Same nullable-return service signatures
+- Same status-code mappings
+- Certifications additionally needs the missing GET endpoints (model exists, reads were never wired)
+
+The interesting work shifts from "what shape is the endpoint?" to "what's different about *this* resource?". For Education that's the nested `Courses` array (still edited via parent PUT — no sub-sub-resource endpoints). For Certifications it's adding the missing GETs. For Projects it's nothing — straight copy.
+
+Languages and AdditionalSkills (next PR after that) will be the actual new shape: natural-key URLs (`/cv/languages/{name}`, composite `/cv/skills/additional/{name}?category={cat}`) instead of an `Id` field.

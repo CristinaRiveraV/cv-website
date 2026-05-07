@@ -26,7 +26,7 @@ Why a permission instead of "any valid token": any Auth0 application registered 
 | Method | Path | Auth | Body | Status |
 |---|---|---|---|---|
 | GET | `/cv/identity` | – | – | ✅ |
-| PUT | `/cv/identity` | `cv:write` | `Identity` | 🚧 |
+| PUT | `/cv/identity` | `cv:write` | `Identity` | ✅ |
 
 PUT replaces the entire Identity object. There's only ever one, so PATCH would only save typing.
 
@@ -37,7 +37,7 @@ PUT replaces the entire Identity object. There's only ever one, so PATCH would o
 | Method | Path | Auth | Body | Status |
 |---|---|---|---|---|
 | GET | `/cv/contact` | – | – | ✅ |
-| PUT | `/cv/contact` | `cv:write` | `ContactInformation` | 🚧 |
+| PUT | `/cv/contact` | `cv:write` | `ContactInformation` | ✅ |
 
 Same reasoning as Identity.
 
@@ -49,9 +49,9 @@ Same reasoning as Identity.
 |---|---|---|---|---|
 | GET | `/cv/experiences` | – | – | ✅ |
 | GET | `/cv/experiences/{id}` | – | – | ✅ |
-| POST | `/cv/experiences` | `cv:write` | `Experience` (Id required, must be unique) | 🚧 |
-| PUT | `/cv/experiences/{id}` | `cv:write` | `Experience` (full replace) | 🚧 |
-| DELETE | `/cv/experiences/{id}` | `cv:write` | – | 🚧 |
+| POST | `/cv/experiences` | `cv:write` | `Experience` (Id required, must be unique) | ✅ |
+| PUT | `/cv/experiences/{id}` | `cv:write` | `Experience` (full replace) | ✅ |
+| DELETE | `/cv/experiences/{id}` | `cv:write` | – | ✅ |
 
 Nested arrays (`Skills`, `Responsibilities`) are edited by PUTting the whole experience. Sub-sub-resource endpoints (e.g. `POST /experiences/{id}/responsibilities`) are 💡 future — overkill for now.
 
