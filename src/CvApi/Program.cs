@@ -42,7 +42,12 @@ builder.Services.AddAuthentication()
         options.Authority = "https://criveravaldez.uk.auth0.com/";
         options.Audience = "https://cv-api";
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CvWrite", policy =>
+        policy.RequireAuthenticatedUser()
+            .RequireClaim("permissions", "cv:write"));
+});
 
 var app = builder.Build();
 

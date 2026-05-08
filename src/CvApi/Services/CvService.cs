@@ -29,4 +29,38 @@ public class CvService
     public Project? GetProject(string id) =>GetPerson().Projects.FirstOrDefault(s => s.Id == id);
     public Experience? GetExperience(string id) =>GetPerson().Experiences.FirstOrDefault(e => e.Id == id);
 
+    public Identity UpdateIdentity(Identity identity)
+    {
+        _repository.UpdateIdentity(identity);
+        _cachedPerson = null; // invalidate cache so next read refetches
+        return identity;
+    }
+    
+    public ContactInformation UpdateContactInformation(ContactInformation contact)
+    {
+        _repository.UpdateContactInformation(contact);
+        _cachedPerson = null; // invalidate cache so next read refetches
+        return contact;
+    }
+
+    public Experience? CreateExperience(Experience experience)
+    {
+        if (!_repository.TryAddExperience(experience)) return null;
+        _cachedPerson = null;
+        return experience;
+    }
+
+    public Experience? UpdateExperience(string id, Experience experience)
+    {
+        if (!_repository.TryUpdateExperience(id, experience)) return null;
+        _cachedPerson = null;
+        return experience;
+    }
+
+    public bool DeleteExperience(string id)
+    {
+        if (!_repository.TryDeleteExperience(id)) return false;
+        _cachedPerson = null;
+        return true;
+    }
 }

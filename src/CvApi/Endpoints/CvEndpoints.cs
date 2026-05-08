@@ -13,9 +13,25 @@ public static class CvEndpoints
             .Produces<Identity>()
             .WithSummary("Get name, title, and personal summary");
 
+        cvGroup.MapPut("/identity", (Identity identity, CvService cv) => Results.Ok(cv.UpdateIdentity(identity)))
+             .RequireAuthorization("CvWrite")
+             .Accepts<Identity>("application/json")
+             .Produces<Identity>()
+             .Produces(StatusCodes.Status401Unauthorized)
+             .Produces(StatusCodes.Status403Forbidden)
+             .WithSummary("Replace name, title, summary, and location");
+
         cvGroup.MapGet("/contact", (CvService cv) => cv.GetContactInformation())
             .Produces<ContactInformation>()
             .WithSummary("Get email, phonenumber, linkedin, github and portfolio links");
+
+        cvGroup.MapPut("/contact", (ContactInformation contact, CvService cv) => Results.Ok(cv.UpdateContactInformation(contact)))
+            .RequireAuthorization("CvWrite")
+            .Accepts<ContactInformation>("application/json")
+            .Produces<ContactInformation>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .WithSummary("Replace email, phonenumber, linkedin, github and portfolio links");
 
         cvGroup.MapGet("/experiences", (CvService cv) => cv.GetExperiences())
             .Produces<List<Experience>>()
@@ -31,6 +47,53 @@ public static class CvEndpoints
             .Produces<Experience>()
             .Produces(StatusCodes.Status404NotFound)
             .WithSummary("Get a specific work experience by ID");
+
+        cvGroup.MapPost("/experiences", (Experience experience, CvService cv) =>
+        {
+            var created = cv.CreateExperience(experience);
+            return created is not null
+                ? Results.Created($"/cv/experiences/{created.Id}", created)
+                : Results.Conflict(new { error = $"Experience with id '{experience.Id}' already exists" });
+        })
+            .RequireAuthorization("CvWrite")
+            .Accepts<Experience>("application/json")
+            .Produces<Experience>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status409Conflict)
+            .WithSummary("Add a new work experience");
+
+        cvGroup.MapPut("/experiences/{id}", (string id, Experience experience, CvService cv) =>
+        {
+            if (id != experience.Id)
+                return Results.BadRequest(new { error = $"URL id '{id}' does not match body id '{experience.Id}'" });
+
+            var updated = cv.UpdateExperience(id, experience);
+            return updated is not null
+                ? Results.Ok(updated)
+                : Results.NotFound(new { error = $"Experience with id '{id}' not found" });
+        })
+          .RequireAuthorization("CvWrite")
+          .Accepts<Experience>("application/json")
+          .Produces<Experience>()
+          .Produces(StatusCodes.Status400BadRequest)
+          .Produces(StatusCodes.Status401Unauthorized)
+          .Produces(StatusCodes.Status403Forbidden)
+          .Produces(StatusCodes.Status404NotFound)
+          .WithSummary("Replace an existing work experience by ID");
+
+        cvGroup.MapDelete("/experiences/{id}", (string id, CvService cv) =>
+        {
+            return cv.DeleteExperience(id)
+                ? Results.NoContent()
+                : Results.NotFound(new { error = $"Experience with id '{id}' not found" });
+        })
+          .RequireAuthorization("CvWrite")
+          .Produces(StatusCodes.Status204NoContent)
+          .Produces(StatusCodes.Status401Unauthorized)
+          .Produces(StatusCodes.Status403Forbidden)
+          .Produces(StatusCodes.Status404NotFound)
+          .WithSummary("Delete a work experience by ID");
 
         cvGroup.MapGet("/education", (CvService cv) => cv.GetEducation())
             .Produces<List<Education>>()
