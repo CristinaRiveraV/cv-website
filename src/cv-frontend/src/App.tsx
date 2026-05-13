@@ -3,8 +3,10 @@ import { AppBar, Toolbar, Button, Box, Typography } from '@mui/material'
 import Home from './pages/Home'
 import Cv from './pages/Cv'
 import Contact from './pages/Contact'
+import { useAuth0 } from '@auth0/auth0-react'
 
 function App() {
+  const { isAuthenticated, user, loginWithRedirect, logout, isLoading } = useAuth0()
   return (
     <BrowserRouter>
       <AppBar position="static">
@@ -12,10 +14,26 @@ function App() {
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Cristina Rivera Valdez
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Button color="inherit" component={NavLink} to="/">Home</Button>
             <Button color="inherit" component={NavLink} to="/cv">CV</Button>
             <Button color="inherit" component={NavLink} to="/contact">Contact</Button>
+            {!isLoading && isAuthenticated && (
+              <>
+                <Typography variant="body2" sx={{ ml: 2 }}>{user?.name}</Typography>
+                <Button
+                  color="inherit"
+                  onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                >
+                  Log out
+                </Button>
+              </>
+            )}
+            {!isLoading && !isAuthenticated && (
+              <Button color="inherit" onClick={() => loginWithRedirect()}>
+                Log in
+              </Button>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
