@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
+import {  Routes, Route, NavLink } from 'react-router-dom'
 import { AppBar, Toolbar, Button, Box, Typography } from '@mui/material'
 import Home from './pages/Home'
 import Cv from './pages/Cv'
@@ -8,7 +8,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 function App() {
   const { isAuthenticated, user, loginWithRedirect, logout, isLoading } = useAuth0()
   return (
-    <BrowserRouter>
+    <>
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -45,7 +45,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
         </Routes>
       </Box>
-    </BrowserRouter>
+    </>
   )
 }
 
